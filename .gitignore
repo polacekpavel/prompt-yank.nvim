@@ -1,0 +1,17 @@
+.DS_Store
+.luarc.json
+.nvimlog
+
+# Tests / CI artifacts
+tmp/
+tmp/*
+
+# Neovim
+.nvim/
+
+# Lua / tooling
+.stylua-cache/
+doc/tags
+
+# Test vendor deps
+tests/vendor/

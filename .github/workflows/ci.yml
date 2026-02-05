@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim: ["v0.9.5", "stable"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Neovim
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ matrix.neovim }}"
+          ref="$version"
+          if [[ "$version" == "stable" ]]; then
+            ref="stable"
+          fi
+
+          url="https://github.com/neovim/neovim/releases/download/${ref}/nvim-linux64.tar.gz"
+          tmp="$(mktemp -d)"
+          curl -fsSL "$url" -o "$tmp/nvim.tar.gz"
+          tar -C "$tmp" -xzf "$tmp/nvim.tar.gz"
+
+          nvim_dir=""
+          for candidate in "$tmp"/nvim-linux64 "$tmp"/nvim-linux-x86_64; do
+            if [[ -d "$candidate" ]]; then
+              nvim_dir="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$nvim_dir" ]]; then
+            echo "Unable to find extracted Neovim directory in $tmp" >&2
+            ls -la "$tmp" >&2 || true
+            exit 1
+          fi
+
+          echo "$nvim_dir/bin" >> "$GITHUB_PATH"
+          "$nvim_dir/bin/nvim" --version
+
+      - name: Install plenary.nvim
+        run: mkdir -p tests/vendor && git clone --depth 1 --branch v0.1.4 https://github.com/nvim-lua/plenary.nvim tests/vendor/plenary.nvim
+
+      - name: Lint (stylua)
+        uses: JohnnyMorganz/stylua-action@479972f01e665acfcba96ada452c36608bdbbb5e # v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.3.1
+          args: --check lua plugin tests
+
+      - name: Test
+        run: make test
