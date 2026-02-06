@@ -1,24 +1,20 @@
-local config = require("prompt-yank.config")
+local config = require('prompt-yank.config')
 
 local M = {}
 
 local function render_string(template, ctx)
-  return (template:gsub("{([%w_]+)}", function(key)
-    local value = ctx[key]
-    if value == nil then
-      return ""
-    end
-    return tostring(value)
-  end))
+  return (
+    template:gsub('{([%w_]+)}', function(key)
+      local value = ctx[key]
+      if value == nil then return '' end
+      return tostring(value)
+    end)
+  )
 end
 
 function M.render_template(template, ctx)
-  if type(template) == "function" then
-    return template(ctx)
-  end
-  if type(template) ~= "string" then
-    return ""
-  end
+  if type(template) == 'function' then return template(ctx) end
+  if type(template) ~= 'string' then return '' end
   return render_string(template, ctx or {})
 end
 
@@ -41,4 +37,3 @@ function M.render_named_template(template_name, ctx, conf)
 end
 
 return M
-

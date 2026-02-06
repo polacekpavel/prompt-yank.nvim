@@ -13,28 +13,22 @@ local identifier_types = {
 }
 
 local skip_names = {
-  ["true"] = true,
-  ["false"] = true,
-  ["null"] = true,
-  ["undefined"] = true,
-  ["this"] = true,
-  ["super"] = true,
+  ['true'] = true,
+  ['false'] = true,
+  ['null'] = true,
+  ['undefined'] = true,
+  ['this'] = true,
+  ['super'] = true,
 }
 
 local function get_identifiers_in_range(bufnr, start_line, end_line)
-  if not vim.treesitter or not vim.treesitter.get_parser then
-    return {}
-  end
+  if not vim.treesitter or not vim.treesitter.get_parser then return {} end
 
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr)
-  if not ok or not parser then
-    return {}
-  end
+  if not ok or not parser then return {} end
 
   local trees = parser:parse()
-  if not trees or not trees[1] then
-    return {}
-  end
+  if not trees or not trees[1] then return {} end
 
   local identifiers = {}
   local seen = {}
@@ -45,18 +39,14 @@ local function get_identifiers_in_range(bufnr, start_line, end_line)
     local function visit(node)
       local sr, sc, er, _ = node:range()
 
-      if sr > end_line - 1 then
-        return
-      end
-      if er < start_line - 1 then
-        return
-      end
+      if sr > end_line - 1 then return end
+      if er < start_line - 1 then return end
 
       local node_type = node:type()
 
       if identifier_types[node_type] then
         local text_ok, text = pcall(vim.treesitter.get_node_text, node, bufnr)
-        if text_ok and text and text ~= "" and not skip_names[text] and not seen[text] then
+        if text_ok and text and text ~= '' and not skip_names[text] and not seen[text] then
           seen[text] = true
           table.insert(identifiers, { name = text, line = sr, col = sc })
         end
@@ -79,10 +69,10 @@ end
 
 local function make_position_params(bufnr, line, col)
   local row = line
-  local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+  local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ''
 
   local clients = vim.lsp.get_clients({ bufnr = bufnr })
-  local offset_encoding = "utf-16"
+  local offset_encoding = 'utf-16'
   for _, client in ipairs(clients) do
     if client.offset_encoding then
       offset_encoding = client.offset_encoding
@@ -91,7 +81,7 @@ local function make_position_params(bufnr, line, col)
   end
 
   local character = col
-  if offset_encoding ~= "utf-8" and col > 0 and col <= #line_text then
+  if offset_encoding ~= 'utf-8' and col > 0 and col <= #line_text then
     local ok, result = pcall(function()
       if vim.str_utfindex then
         return vim.str_utfindex(line_text, offset_encoding, col, false)
@@ -100,9 +90,7 @@ local function make_position_params(bufnr, line, col)
       end
       return col
     end)
-    if ok and result then
-      character = result
-    end
+    if ok and result then character = result end
   end
 
   return {
@@ -113,14 +101,12 @@ end
 
 local function try_lsp_method(bufnr, method, params, timeout_ms)
   local results = vim.lsp.buf_request_sync(bufnr, method, params, timeout_ms)
-  if not results then
-    return nil
-  end
+  if not results then return nil end
 
   for _, res in pairs(results) do
     if res.result then
       local locations = res.result
-      if type(locations) == "table" then
+      if type(locations) == 'table' then
         if locations[1] then
           return locations[1]
         elseif locations.uri or locations.targetUri then
@@ -137,23 +123,19 @@ local function lsp_get_definition(bufnr, line, col, timeout_ms)
   timeout_ms = timeout_ms or 2000
 
   local clients = vim.lsp.get_clients({ bufnr = bufnr })
-  if #clients == 0 then
-    return nil
-  end
+  if #clients == 0 then return nil end
 
   local params = make_position_params(bufnr, line, col)
 
   local methods = {
-    "textDocument/definition",
-    "textDocument/typeDefinition",
-    "textDocument/implementation",
+    'textDocument/definition',
+    'textDocument/typeDefinition',
+    'textDocument/implementation',
   }
 
   for _, method in ipairs(methods) do
     local result = try_lsp_method(bufnr, method, params, timeout_ms)
-    if result then
-      return result
-    end
+    if result then return result end
   end
 
   return nil
@@ -163,13 +145,11 @@ local function location_to_info(location)
   local uri = location.uri or location.targetUri
   local range = location.range or location.targetSelectionRange or location.targetRange
 
-  if not uri or not range then
-    return nil
-  end
+  if not uri or not range then return nil end
 
   local filepath = vim.uri_to_fname(uri)
   local start_line = (range.start and range.start.line or 0) + 1
-  local end_line = (range["end"] and range["end"].line or start_line - 1) + 1
+  local end_line = (range['end'] and range['end'].line or start_line - 1) + 1
 
   return {
     filepath = filepath,
@@ -180,9 +160,7 @@ end
 
 local function read_definition_code(filepath, start_line)
   local ok, lines = pcall(vim.fn.readfile, filepath)
-  if not ok or not lines then
-    return nil, nil
-  end
+  if not ok or not lines then return nil, nil end
 
   if not vim.treesitter then
     local end_line = math.min(start_line + 20, #lines)
@@ -190,7 +168,7 @@ local function read_definition_code(filepath, start_line)
     for i = start_line, end_line do
       table.insert(code_lines, lines[i])
     end
-    return table.concat(code_lines, "\n"), end_line
+    return table.concat(code_lines, '\n'), end_line
   end
 
   local ft = vim.filetype.match({ filename = filepath })
@@ -200,10 +178,10 @@ local function read_definition_code(filepath, start_line)
     for i = start_line, end_line do
       table.insert(code_lines, lines[i])
     end
-    return table.concat(code_lines, "\n"), end_line
+    return table.concat(code_lines, '\n'), end_line
   end
 
-  local content = table.concat(lines, "\n")
+  local content = table.concat(lines, '\n')
   local parser_ok, parser = pcall(vim.treesitter.get_string_parser, content, ft)
   if not parser_ok or not parser then
     local end_line = math.min(start_line + 20, #lines)
@@ -211,7 +189,7 @@ local function read_definition_code(filepath, start_line)
     for i = start_line, end_line do
       table.insert(code_lines, lines[i])
     end
-    return table.concat(code_lines, "\n"), end_line
+    return table.concat(code_lines, '\n'), end_line
   end
 
   local trees = parser:parse()
@@ -221,7 +199,7 @@ local function read_definition_code(filepath, start_line)
     for i = start_line, end_line do
       table.insert(code_lines, lines[i])
     end
-    return table.concat(code_lines, "\n"), end_line
+    return table.concat(code_lines, '\n'), end_line
   end
 
   local root = trees[1]:root()
@@ -232,7 +210,7 @@ local function read_definition_code(filepath, start_line)
     function_declaration = true,
     function_definition = true,
     function_item = true,
-    ["function"] = true,
+    ['function'] = true,
     method_definition = true,
     method_declaration = true,
     class_declaration = true,
@@ -254,14 +232,12 @@ local function read_definition_code(filepath, start_line)
     if container_types[node:type()] then
       local sr, _, er, ec = node:range()
       local actual_end = er + 1
-      if ec == 0 and er > sr then
-        actual_end = er
-      end
+      if ec == 0 and er > sr then actual_end = er end
       local code_lines = {}
       for i = sr + 1, actual_end do
         table.insert(code_lines, lines[i])
       end
-      return table.concat(code_lines, "\n"), actual_end
+      return table.concat(code_lines, '\n'), actual_end
     end
     node = node:parent()
   end
@@ -271,7 +247,7 @@ local function read_definition_code(filepath, start_line)
   for i = start_line, end_line do
     table.insert(code_lines, lines[i])
   end
-  return table.concat(code_lines, "\n"), end_line
+  return table.concat(code_lines, '\n'), end_line
 end
 
 function M.get_definitions_for_selection(bufnr, start_line, end_line, opts)
@@ -287,7 +263,7 @@ function M.get_definitions_for_selection(bufnr, start_line, end_line, opts)
     if location then
       local info = location_to_info(location)
       if info then
-        local key = info.filepath .. ":" .. info.start_line
+        local key = info.filepath .. ':' .. info.start_line
         if not seen_locations[key] then
           seen_locations[key] = true
           local code, actual_end = read_definition_code(info.filepath, info.start_line)
@@ -318,9 +294,10 @@ function M.get_definitions_deep(bufnr, start_line, end_line, opts)
   local seen_locations = {}
   local queue = {}
 
-  local initial_defs = M.get_definitions_for_selection(bufnr, start_line, end_line, { timeout_ms = timeout_ms })
+  local initial_defs =
+    M.get_definitions_for_selection(bufnr, start_line, end_line, { timeout_ms = timeout_ms })
   for _, def in ipairs(initial_defs) do
-    local key = def.filepath .. ":" .. def.start_line
+    local key = def.filepath .. ':' .. def.start_line
     if not seen_locations[key] then
       seen_locations[key] = true
       def.depth = 1
@@ -331,9 +308,7 @@ function M.get_definitions_deep(bufnr, start_line, end_line, opts)
 
   while #queue > 0 and #all_definitions < max_definitions do
     local current = table.remove(queue, 1)
-    if current.depth >= max_depth then
-      goto continue
-    end
+    if current.depth >= max_depth then goto continue end
 
     local def_bufnr = vim.fn.bufadd(current.filepath)
     vim.fn.bufload(def_bufnr)
@@ -346,10 +321,8 @@ function M.get_definitions_deep(bufnr, start_line, end_line, opts)
     )
 
     for _, def in ipairs(nested_defs) do
-      if #all_definitions >= max_definitions then
-        break
-      end
-      local key = def.filepath .. ":" .. def.start_line
+      if #all_definitions >= max_definitions then break end
+      local key = def.filepath .. ':' .. def.start_line
       if not seen_locations[key] then
         seen_locations[key] = true
         def.depth = current.depth + 1
@@ -365,16 +338,21 @@ function M.get_definitions_deep(bufnr, start_line, end_line, opts)
 end
 
 function M.format_definition(def, root)
-  local util = require("prompt-yank.util")
-  local config = require("prompt-yank.config")
-  local lang_mod = require("prompt-yank.lang")
+  local util = require('prompt-yank.util')
+  local config = require('prompt-yank.config')
+  local lang_mod = require('prompt-yank.lang')
 
   local conf = config.get()
   local filepath = util.display_path(def.filepath, root, conf.path_style)
   local language = lang_mod.for_path(def.filepath, conf)
 
-  local header = ("`%s#L%d-L%d` (definition: %s)"):format(filepath, def.start_line, def.end_line, def.name)
-  return header .. "\n```" .. language .. "\n" .. def.code .. "\n```"
+  local header = ('`%s#L%d-L%d` (definition: %s)'):format(
+    filepath,
+    def.start_line,
+    def.end_line,
+    def.name
+  )
+  return header .. '\n```' .. language .. '\n' .. def.code .. '\n```'
 end
 
 function M.format_definitions(definitions, root)
@@ -382,7 +360,7 @@ function M.format_definitions(definitions, root)
   for _, def in ipairs(definitions) do
     table.insert(blocks, M.format_definition(def, root))
   end
-  return table.concat(blocks, "\n\n")
+  return table.concat(blocks, '\n\n')
 end
 
 function M.debug_selection(bufnr, start_line, end_line)
@@ -412,9 +390,7 @@ function M.debug_selection(bufnr, start_line, end_line)
   local info = {
     buffer = bufnr,
     range = { start_line, end_line },
-    lsp_clients = vim.tbl_map(function(c)
-      return c.name
-    end, clients),
+    lsp_clients = vim.tbl_map(function(c) return c.name end, clients),
     identifiers_found = #identifiers,
     identifiers = identifiers,
     node_types_in_range = node_types,

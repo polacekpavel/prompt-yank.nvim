@@ -1,25 +1,22 @@
-local config = require("prompt-yank.config")
-local lang = require("prompt-yank.lang")
+local config = require('prompt-yank.config')
+local lang = require('prompt-yank.lang')
 
-describe("prompt-yank.lang", function()
-  before_each(function()
-    config.setup({})
+describe('prompt-yank.lang', function()
+  before_each(function() config.setup({}) end)
+
+  it('maps filetypes via lang_map', function()
+    local conf = config.get()
+    assert.equals('tsx', lang.for_filetype('typescriptreact', conf))
   end)
 
-  it("maps filetypes via lang_map", function()
+  it('maps extensions via ext_map', function()
     local conf = config.get()
-    assert.equals("tsx", lang.for_filetype("typescriptreact", conf))
+    assert.equals('typescript', lang.for_extension('ts', conf))
   end)
 
-  it("maps extensions via ext_map", function()
+  it('allows user overrides', function()
+    config.setup({ lang_map = { typescriptreact = 'typescriptreact' } })
     local conf = config.get()
-    assert.equals("typescript", lang.for_extension("ts", conf))
-  end)
-
-  it("allows user overrides", function()
-    config.setup({ lang_map = { typescriptreact = "typescriptreact" } })
-    local conf = config.get()
-    assert.equals("typescriptreact", lang.for_filetype("typescriptreact", conf))
+    assert.equals('typescriptreact', lang.for_filetype('typescriptreact', conf))
   end)
 end)
-
