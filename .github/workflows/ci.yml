@@ -28,9 +28,23 @@ jobs:
             ref="stable"
           fi
 
-          url="https://github.com/neovim/neovim/releases/download/${ref}/nvim-linux64.tar.gz"
           tmp="$(mktemp -d)"
-          curl -fsSL "$url" -o "$tmp/nvim.tar.gz"
+          urls=(
+            "https://github.com/neovim/neovim/releases/download/${ref}/nvim-linux-x86_64.tar.gz"
+            "https://github.com/neovim/neovim/releases/download/${ref}/nvim-linux64.tar.gz"
+          )
+          downloaded=0
+          for url in "${urls[@]}"; do
+            if curl -fsSL "$url" -o "$tmp/nvim.tar.gz"; then
+              downloaded=1
+              break
+            fi
+          done
+          if [[ "$downloaded" -ne 1 ]]; then
+            echo "Unable to download Neovim archive for '$ref'." >&2
+            printf 'Tried:\n%s\n' "${urls[@]}" >&2
+            exit 1
+          fi
           tar -C "$tmp" -xzf "$tmp/nvim.tar.gz"
 
           nvim_dir=""
