@@ -1,5 +1,7 @@
 local M = {}
 
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+
 local identifier_types = {
   identifier = true,
   type_identifier = true,
@@ -71,7 +73,7 @@ local function make_position_params(bufnr, line, col)
   local row = line
   local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ''
 
-  local clients = vim.lsp.get_clients({ bufnr = bufnr })
+  local clients = get_clients({ bufnr = bufnr })
   local offset_encoding = 'utf-16'
   for _, client in ipairs(clients) do
     if client.offset_encoding then
@@ -122,7 +124,7 @@ end
 local function lsp_get_definition(bufnr, line, col, timeout_ms)
   timeout_ms = timeout_ms or 2000
 
-  local clients = vim.lsp.get_clients({ bufnr = bufnr })
+  local clients = get_clients({ bufnr = bufnr })
   if #clients == 0 then return nil end
 
   local params = make_position_params(bufnr, line, col)
@@ -366,7 +368,7 @@ end
 function M.debug_selection(bufnr, start_line, end_line)
   bufnr = bufnr or 0
   local identifiers = get_identifiers_in_range(bufnr, start_line, end_line)
-  local clients = vim.lsp.get_clients({ bufnr = bufnr })
+  local clients = get_clients({ bufnr = bufnr })
 
   local node_types = {}
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr)
