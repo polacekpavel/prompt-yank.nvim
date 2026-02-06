@@ -130,6 +130,8 @@ M.defaults = {
     copy_tree = "<Leader>yt",
     copy_blame = "<Leader>yb",
     copy_remote = "<Leader>yr",
+    copy_with_definitions = "<Leader>yl",
+    copy_with_definitions_deep = "<Leader>yL",
   },
 }
 

@@ -69,6 +69,9 @@ local function apply_keymaps()
 
   nmap("copy_remote", M.yank_remote, "PromptYank: remote URL")
   vmap("copy_remote", M.yank_remote, "PromptYank: remote URL + selection")
+
+  vmap("copy_with_definitions", M.yank_with_definitions, "PromptYank: selection + definitions")
+  vmap("copy_with_definitions_deep", M.yank_with_definitions_deep, "PromptYank: selection + deep definitions")
 end
 
 function M.setup(opts)
@@ -567,6 +570,84 @@ function M.yank_multi(opts)
     end
     M.yank_files(paths, opts)
   end)
+end
+
+function M.yank_with_definitions(opts)
+  opts = opts or {}
+  local yank = require("prompt-yank.yank")
+  local lsp = require("prompt-yank.lsp")
+
+  local bufnr = current_bufnr()
+  local code, line_start, line_end = yank.get_visual_selection(bufnr, opts)
+  if not code then
+    yank.notify("No visual selection found", vim.log.levels.WARN, opts)
+    return nil
+  end
+
+  local root = get_root(bufnr)
+  local ctx = yank.build_ctx_for_buffer(bufnr, code, line_start, line_end)
+  local selection_block = yank.format_code_block(ctx, opts)
+
+  local definitions = lsp.get_definitions_for_selection(bufnr, line_start, line_end, {
+    timeout_ms = opts.timeout_ms or 2000,
+  })
+
+  if #definitions == 0 then
+    yank.copy(selection_block, opts)
+    yank.notify(("Copied %d lines (no definitions found)"):format(line_end - line_start + 1), nil, opts)
+    return selection_block
+  end
+
+  local defs_block = lsp.format_definitions(definitions, root)
+  local text = selection_block .. "\n\n---\n\n**Referenced Definitions:**\n\n" .. defs_block
+
+  yank.copy(text, opts)
+  yank.notify(
+    ("Copied %d lines + %d definitions from %s"):format(line_end - line_start + 1, #definitions, ctx.filepath),
+    nil,
+    opts
+  )
+  return text
+end
+
+function M.yank_with_definitions_deep(opts)
+  opts = opts or {}
+  local yank = require("prompt-yank.yank")
+  local lsp = require("prompt-yank.lsp")
+
+  local bufnr = current_bufnr()
+  local code, line_start, line_end = yank.get_visual_selection(bufnr, opts)
+  if not code then
+    yank.notify("No visual selection found", vim.log.levels.WARN, opts)
+    return nil
+  end
+
+  local root = get_root(bufnr)
+  local ctx = yank.build_ctx_for_buffer(bufnr, code, line_start, line_end)
+  local selection_block = yank.format_code_block(ctx, opts)
+
+  local definitions = lsp.get_definitions_deep(bufnr, line_start, line_end, {
+    max_depth = opts.max_depth or 3,
+    timeout_ms = opts.timeout_ms or 2000,
+    max_definitions = opts.max_definitions or 50,
+  })
+
+  if #definitions == 0 then
+    yank.copy(selection_block, opts)
+    yank.notify(("Copied %d lines (no definitions found)"):format(line_end - line_start + 1), nil, opts)
+    return selection_block
+  end
+
+  local defs_block = lsp.format_definitions(definitions, root)
+  local text = selection_block .. "\n\n---\n\n**Referenced Definitions (deep):**\n\n" .. defs_block
+
+  yank.copy(text, opts)
+  yank.notify(
+    ("Copied %d lines + %d deep definitions from %s"):format(line_end - line_start + 1, #definitions, ctx.filepath),
+    nil,
+    opts
+  )
+  return text
 end
 
 return M

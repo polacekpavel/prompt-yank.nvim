@@ -45,6 +45,8 @@ Think of it as a **Copy for AI** button in Neovim.
     { "<Leader>yt", mode = { "n", "v" }, desc = "PromptYank: tree" },
     { "<Leader>yr", mode = { "n", "v" }, desc = "PromptYank: remote URL" },
     { "<Leader>yf", mode = "n", desc = "PromptYank: function" },
+    { "<Leader>yl", mode = "v", desc = "PromptYank: selection + definitions" },
+    { "<Leader>yL", mode = "v", desc = "PromptYank: selection + deep definitions" },
   },
   opts = {},
   config = function(_, opts)
@@ -66,7 +68,7 @@ require("prompt-yank").setup({
 Everything is exposed via one command:
 
 - `:PromptYank` (smart: range → selection, no range → file)
-- `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote`
+- `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote|definitions|definitions_deep`
 - `:PromptYank format [name]`
 - `:PromptYank formats`
 
@@ -95,6 +97,8 @@ Visual mode:
 - `<Leader>yd` copy selection + diff
 - `<Leader>yb` copy selection blame
 - `<Leader>yt` copy tree path + selection
+- `<Leader>yl` copy selection + LSP definitions
+- `<Leader>yL` copy selection + deep LSP definitions (recursive)
 
 ### Output Example
 
@@ -105,10 +109,67 @@ Visual mode:
 ```
 ````
 
+### LSP Definitions
+
+Copy code with all referenced symbols (functions, types, interfaces, variables) resolved via LSP:
+
+- **`<Leader>yl`** — selection + direct definitions (one level)
+- **`<Leader>yL`** — selection + deep definitions (recursive, up to 3 levels)
+
+Each definition includes file path and line numbers for full context.
+
+#### Example Output
+
+Select this code in `app/profile.tsx`:
+```tsx
+const user = useCurrentUser();
+return <ProfileCard user={user} />;
+```
+
+Running `<Leader>yl` produces:
+
+````text
+`app/profile.tsx#L10-L11`
+```tsx
+const user = useCurrentUser();
+return <ProfileCard user={user} />;
+```
+
+---
+
+**Referenced Definitions:**
+
+`hooks/useCurrentUser.ts#L5-L15` (definition: useCurrentUser)
+```typescript
+export function useCurrentUser(): User {
+  const { data } = useQuery(['user'], fetchUser);
+  return data;
+}
+```
+
+`components/ProfileCard.tsx#L8-L25` (definition: ProfileCard)
+```tsx
+export function ProfileCard({ user }: { user: User }) {
+  return (
+    <div className="card">
+      <h2>{user.name}</h2>
+    </div>
+  );
+}
+```
+````
+
+#### Options (via API)
+
+- `timeout_ms` — LSP request timeout (default: 2000ms)
+- `max_depth` — recursion depth for deep version (default: 3)
+- `max_definitions` — cap on total definitions (default: 50)
+
 ### Notes
 
 - No required dependencies (pure Lua).
 - Git features require `git` available on `$PATH`.
+- LSP definitions require an active LSP client attached to the buffer.
 - Multi-file picker prefers `fzf-lua`, then `telescope`, then a builtin input fallback.
 
 ### Development

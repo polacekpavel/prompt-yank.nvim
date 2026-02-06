@@ -13,6 +13,8 @@ local subcommands = {
   "context",
   "tree",
   "remote",
+  "definitions",
+  "definitions_deep",
   "format",
   "formats",
 }
@@ -108,6 +110,24 @@ function M.run(opts)
       return py.yank_remote({ line_start = opts.line1, line_end = opts.line2 })
     end
     return py.yank_remote()
+  end
+
+  if sub == "definitions" then
+    if opts.range and opts.range ~= 0 then
+      return py.yank_with_definitions({ line_start = opts.line1, line_end = opts.line2, from_visual = true })
+    end
+    return py.yank_with_definitions({ from_visual = true })
+  end
+
+  if sub == "definitions_deep" then
+    local depth = as_int(args[2])
+    local override = depth and { max_depth = depth } or {}
+    override.from_visual = true
+    if opts.range and opts.range ~= 0 then
+      override.line_start = opts.line1
+      override.line_end = opts.line2
+    end
+    return py.yank_with_definitions_deep(override)
   end
 
   if sub == "formats" then
