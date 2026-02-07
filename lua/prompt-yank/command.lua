@@ -15,6 +15,7 @@ local subcommands = {
   'remote',
   'definitions',
   'definitions_deep',
+  'tokens',
   'format',
   'formats',
   'style',
@@ -119,6 +120,26 @@ function M.run(opts)
       override.line_end = opts.line2
     end
     return py.yank_with_definitions_deep(override)
+  end
+
+  if sub == 'tokens' then
+    local tokens = require('prompt-yank.tokens')
+    local yank = require('prompt-yank.yank')
+    local bufnr = 0
+    local text
+    if opts.range and opts.range ~= 0 then
+      text = yank.get_range_text(bufnr, opts.line1, opts.line2)
+    else
+      local sel = yank.get_visual_selection(bufnr, { from_visual = true })
+      if sel then
+        text = sel
+      else
+        text = yank.get_buffer_text(bufnr)
+      end
+    end
+    local count = tokens.estimate(text)
+    vim.notify(('prompt-yank: %s'):format(tokens.format_count(count)), vim.log.levels.INFO)
+    return
   end
 
   if sub == 'formats' then
