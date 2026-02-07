@@ -131,6 +131,21 @@ require("prompt-yank").setup({
 Both `templates` and `xml_templates` tables are user-configurable. Custom entries in
 `xml_templates` override the defaults when `output_style = "xml"`.
 
+#### Code Block Formats
+
+There are 4 built-in formats that control how individual code blocks are wrapped.
+Switch with `:PromptYank format <name>` or set `format` in `setup()`.
+
+| Format    | Output                                                                    |
+|-----------|---------------------------------------------------------------------------|
+| `default` | `` `path#L1-L5` ```lang ... ``` ``                                        |
+| `minimal` | `` ```lang ... ``` <!-- path#L1-L5 --> ``                                 |
+| `xml`     | `<file path="..." lines="..." language="..."> code </file>`               |
+| `claude`  | `<file path="..." lines="..." language="..."><code> code </code></file>`  |
+
+The `xml` and `claude` formats are both XML-based — the only difference is that `claude`
+wraps the code in an additional `<code>` tag inside `<file>`.
+
 ### Commands
 
 Everything is exposed via one command:
