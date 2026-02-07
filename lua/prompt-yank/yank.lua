@@ -107,9 +107,8 @@ end
 function M.format_code_block(ctx, opts) return format.render_code_block(ctx, opts) end
 
 function M.format_named_template(template_name, ctx, opts)
-  local conf = config.get()
   ctx.code_block = ctx.code_block or format.render_code_block(ctx, opts)
-  local tpl = conf.templates and conf.templates[template_name] or nil
+  local tpl = config.resolve_template(template_name)
   if tpl == nil or tpl == '' then return ctx.code_block end
   return format.render_template(tpl, ctx)
 end
@@ -206,8 +205,7 @@ function M.read_file(fullpath, max_bytes)
 end
 
 function M.join_blocks(blocks)
-  local conf = config.get()
-  local sep = conf.templates.multi_sep or '\n\n'
+  local sep = config.resolve_template('multi_sep') or '\n\n'
   return table.concat(blocks, sep)
 end
 

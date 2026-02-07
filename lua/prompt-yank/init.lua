@@ -641,7 +641,10 @@ function M.yank_with_definitions(opts)
   end
 
   local defs_block = lsp.format_definitions(definitions, root)
-  local text = selection_block .. '\n\n---\n\n**Referenced Definitions:**\n\n' .. defs_block
+  local header = config.resolve_template('definitions_header')
+    or '\n\n---\n\n**Referenced Definitions:**\n\n'
+  local footer = config.resolve_template('definitions_footer') or ''
+  local text = selection_block .. header .. defs_block .. footer
 
   yank.copy(text, opts)
   yank.notify(
@@ -689,7 +692,10 @@ function M.yank_with_definitions_deep(opts)
   end
 
   local defs_block = lsp.format_definitions(definitions, root)
-  local text = selection_block .. '\n\n---\n\n**Referenced Definitions (deep):**\n\n' .. defs_block
+  local header = config.resolve_template('definitions_deep_header')
+    or '\n\n---\n\n**Referenced Definitions (deep):**\n\n'
+  local footer = config.resolve_template('definitions_footer') or ''
+  local text = selection_block .. header .. defs_block .. footer
 
   yank.copy(text, opts)
   yank.notify(

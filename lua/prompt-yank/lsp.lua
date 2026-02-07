@@ -343,10 +343,23 @@ function M.format_definition(def, root)
   local util = require('prompt-yank.util')
   local config = require('prompt-yank.config')
   local lang_mod = require('prompt-yank.lang')
+  local format_mod = require('prompt-yank.format')
 
   local conf = config.get()
   local filepath = util.display_path(def.filepath, root, conf.path_style)
   local language = lang_mod.for_path(def.filepath, conf)
+
+  local tpl = config.resolve_template('definition_item')
+  if tpl then
+    return format_mod.render_template(tpl, {
+      filepath = filepath,
+      start_line = def.start_line,
+      end_line = def.end_line,
+      name = def.name,
+      lang = language,
+      code = def.code,
+    })
+  end
 
   local header = ('`%s#L%d-L%d` (definition: %s)'):format(
     filepath,

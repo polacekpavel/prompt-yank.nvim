@@ -32,7 +32,7 @@ end
 
 function M.render_named_template(template_name, ctx, conf)
   conf = conf or config.get()
-  local tpl = (conf.templates or {})[template_name]
+  local tpl = config.resolve_template(template_name)
   return M.render_template(tpl, ctx)
 end
 

@@ -63,6 +63,48 @@ require("prompt-yank").setup({
 })
 ```
 
+### Output Style
+
+By default, output uses **Markdown** fenced code blocks (optimized for OpenAI / ChatGPT).
+Set `output_style = "xml"` to use **XML tags** (preferred by Claude / Anthropic models).
+
+```lua
+require("prompt-yank").setup({
+  output_style = "xml", -- "markdown" (default) or "xml"
+})
+```
+
+**Markdown** (default):
+
+````text
+`src/main.lua#L10-L20`
+```lua
+-- code here
+```
+````
+
+**XML**:
+
+```text
+<file path="src/main.lua" lines="10-20" language="lua">
+-- code here
+</file>
+```
+
+The `output_style` setting controls both the code block format and all surrounding templates
+(diagnostics, diffs, blame, tree, definitions, etc.). When set to `"xml"`, the default
+code format switches to `xml` automatically. You can still override `format` independently:
+
+```lua
+require("prompt-yank").setup({
+  output_style = "xml",   -- XML templates for diagnostics, diff, blame, etc.
+  format = "claude",      -- use the claude code block format specifically
+})
+```
+
+Both `templates` and `xml_templates` tables are user-configurable. Custom entries in
+`xml_templates` override the defaults when `output_style = "xml"`.
+
 ### Commands
 
 Everything is exposed via one command:
@@ -71,6 +113,7 @@ Everything is exposed via one command:
 - `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote|definitions|definitions_deep`
 - `:PromptYank format [name]`
 - `:PromptYank formats`
+- `:PromptYank style [markdown|xml]`
 
 ### Checkhealth
 
