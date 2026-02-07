@@ -1,6 +1,7 @@
 local M = {}
 
 M.defaults = {
+  output_style = 'markdown',
   format = 'default',
   formats = {
     default = '`{filepath}{lines_hash}`\n```{lang}\n{code}\n```',
@@ -19,6 +20,26 @@ M.defaults = {
     remote_with_code = '`{filepath}{lines_hash}`\n{remote_url}\n\n```{lang}\n{code}\n```',
     context = '`{filepath}{lines_hash}` (with {context_lines} lines context)\n```{lang}\n{code}\n```',
     function_named = '`{filepath}{lines_hash}` (function: {symbol_name})\n```{lang}\n{code}\n```',
+    definitions_header = '\n\n---\n\n**Referenced Definitions:**\n\n',
+    definitions_deep_header = '\n\n---\n\n**Referenced Definitions (deep):**\n\n',
+    definition_item = '`{filepath}#L{start_line}-L{end_line}` (definition: {name})\n```{lang}\n{code}\n```',
+    multi_sep = '\n\n',
+  },
+  xml_templates = {
+    diagnostics = '{code_block}\n<diagnostics>\n{diagnostics}\n</diagnostics>',
+    diff_file = '<diff path="{filepath}" type="uncommitted">\n{diff}\n</diff>',
+    diff_with_selection = '<file path="{filepath}" lines="{lines_plain}" language="{lang}">\n{code}\n</file>\n<diff path="{filepath}" type="uncommitted">\n{diff}\n</diff>',
+    blame_file = '<blame path="{filepath}" language="{lang}">\n{blame}\n</blame>',
+    blame_selection = '<blame path="{filepath}" lines="{lines_plain}" language="{lang}">\n{blame}\n</blame>',
+    tree_full = '<project name="{project_name}">\n{project_tree}\n</project>',
+    tree_with_selection = '<project name="{project_name}">\n{project_tree}\n</project>\n\n{code_block}',
+    remote_with_code = '<file path="{filepath}" lines="{lines_plain}" language="{lang}" remote="{remote_url}">\n{code}\n</file>',
+    context = '<file path="{filepath}" lines="{lines_plain}" language="{lang}" context_lines="{context_lines}">\n{code}\n</file>',
+    function_named = '<function name="{symbol_name}" path="{filepath}" lines="{lines_plain}" language="{lang}">\n{code}\n</function>',
+    definitions_header = '\n<definitions>\n',
+    definitions_deep_header = '\n<definitions type="deep">\n',
+    definitions_footer = '</definitions>',
+    definition_item = '<definition name="{name}" path="{filepath}" lines="{start_line}-{end_line}" language="{lang}">\n{code}\n</definition>',
     multi_sep = '\n\n',
   },
   path_style = 'relative',
@@ -143,6 +164,11 @@ local function deep_merge(base, override) return vim.tbl_deep_extend('force', ba
 
 function M.setup(opts)
   M._config = deep_merge(deep_copy(M.defaults), opts or {})
+
+  if M._config.output_style == 'xml' then
+    if not opts or opts.format == nil then M._config.format = 'xml' end
+  end
+
   return M._config
 end
 
@@ -159,6 +185,32 @@ function M.set_format(name)
   if conf.formats[name] == nil then return false, ('unknown format: %s'):format(name) end
   conf.format = name
   return true
+end
+
+function M.set_output_style(style)
+  local conf = M.get()
+  if type(style) ~= 'string' or style == '' then
+    return false, 'output_style must be a non-empty string'
+  end
+  if style ~= 'markdown' and style ~= 'xml' then
+    return false, ('unknown output_style: %s (expected "markdown" or "xml")'):format(style)
+  end
+  conf.output_style = style
+  if style == 'xml' then
+    conf.format = 'xml'
+  else
+    conf.format = 'default'
+  end
+  return true
+end
+
+function M.resolve_template(name)
+  local conf = M.get()
+  if conf.output_style == 'xml' then
+    local xml_tpl = conf.xml_templates and conf.xml_templates[name]
+    if xml_tpl ~= nil then return xml_tpl end
+  end
+  return conf.templates and conf.templates[name]
 end
 
 function M.list_formats()

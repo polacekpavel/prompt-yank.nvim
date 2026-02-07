@@ -63,6 +63,89 @@ require("prompt-yank").setup({
 })
 ```
 
+### Output Style
+
+By default, output uses **Markdown** fenced code blocks (optimized for OpenAI / ChatGPT).
+Set `output_style = "xml"` to use **XML tags** (preferred by Claude / Anthropic models).
+
+Claude and other Anthropic models parse structured context more reliably when it is wrapped
+in XML tags rather than Markdown fences. XML gives the model unambiguous boundaries between
+file metadata, code, and diagnostics — reducing hallucinated line numbers and misattributed
+snippets in longer prompts. If you mainly paste into Claude, switching to XML is recommended.
+
+You can also switch at runtime without restarting Neovim:
+
+```vim
+:PromptYank style xml
+:PromptYank style markdown
+```
+
+```lua
+require("prompt-yank").setup({
+  output_style = "xml", -- "markdown" (default) or "xml"
+})
+```
+
+**Markdown** (default):
+
+````text
+`src/main.lua#L10-L20`
+```lua
+-- code here
+```
+````
+
+**XML**:
+
+```text
+<file path="src/main.lua" lines="10-20" language="lua">
+-- code here
+</file>
+```
+
+#### Full example: diagnostics with XML style
+
+```text
+<file path="app/swift-example/Views/Sensors/SensorsView.swift" lines="17-20" language="swift">
+struct SensorRowView: View {
+    let sensorType: SensorType
+    let status: SensorRowStatus
+    let onTap: (() -> Void)?
+</file>
+<diagnostics>
+- L18: [error] Cannot find type 'SensorType' in scope
+</diagnostics>
+```
+
+The `output_style` setting controls both the code block format and all surrounding templates
+(diagnostics, diffs, blame, tree, definitions, etc.). When set to `"xml"`, the default
+code format switches to `xml` automatically. You can still override `format` independently:
+
+```lua
+require("prompt-yank").setup({
+  output_style = "xml",   -- XML templates for diagnostics, diff, blame, etc.
+  format = "claude",      -- use the claude code block format specifically
+})
+```
+
+Both `templates` and `xml_templates` tables are user-configurable. Custom entries in
+`xml_templates` override the defaults when `output_style = "xml"`.
+
+#### Code Block Formats
+
+There are 4 built-in formats that control how individual code blocks are wrapped.
+Switch with `:PromptYank format <name>` or set `format` in `setup()`.
+
+| Format    | Output                                                                    |
+|-----------|---------------------------------------------------------------------------|
+| `default` | `` `path#L1-L5` ```lang ... ``` ``                                        |
+| `minimal` | `` ```lang ... ``` <!-- path#L1-L5 --> ``                                 |
+| `xml`     | `<file path="..." lines="..." language="..."> code </file>`               |
+| `claude`  | `<file path="..." lines="..." language="..."><code> code </code></file>`  |
+
+The `xml` and `claude` formats are both XML-based — the only difference is that `claude`
+wraps the code in an additional `<code>` tag inside `<file>`.
+
 ### Commands
 
 Everything is exposed via one command:
@@ -71,6 +154,7 @@ Everything is exposed via one command:
 - `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote|definitions|definitions_deep`
 - `:PromptYank format [name]`
 - `:PromptYank formats`
+- `:PromptYank style [markdown|xml]`
 
 ### Checkhealth
 

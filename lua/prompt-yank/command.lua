@@ -17,6 +17,7 @@ local subcommands = {
   'definitions_deep',
   'format',
   'formats',
+  'style',
 }
 
 local function as_int(value)
@@ -141,6 +142,30 @@ function M.run(opts)
     return
   end
 
+  if sub == 'style' then
+    local name = args[2]
+    if not name or name == '' then
+      vim.notify(
+        ('prompt-yank: output_style = %s'):format(config.get().output_style),
+        vim.log.levels.INFO
+      )
+      return
+    end
+    local ok, err = config.set_output_style(name)
+    if ok then
+      vim.notify(
+        ('prompt-yank: output_style = %s, format = %s'):format(
+          config.get().output_style,
+          config.get().format
+        ),
+        vim.log.levels.INFO
+      )
+    else
+      vim.notify(('prompt-yank: %s'):format(err), vim.log.levels.ERROR)
+    end
+    return
+  end
+
   vim.notify(('prompt-yank: unknown subcommand: %s'):format(sub), vim.log.levels.ERROR)
 end
 
@@ -156,6 +181,11 @@ function M.complete(arg_lead, cmd_line, _cursor_pos)
   if first == 'format' and #parts <= 2 then
     local formats = config.list_formats()
     return vim.tbl_filter(function(s) return s:find(arg_lead, 1, true) == 1 end, formats)
+  end
+
+  if first == 'style' and #parts <= 2 then
+    local styles = { 'markdown', 'xml' }
+    return vim.tbl_filter(function(s) return s:find(arg_lead, 1, true) == 1 end, styles)
   end
 
   if #parts == 1 then
