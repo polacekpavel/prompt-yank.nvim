@@ -245,7 +245,21 @@ describe('prompt-yank.related', function()
       assert.is_true(text:find('return {}') ~= nil)
     end)
 
-    it('returns nil when no related files found', function()
+    it('includes current file in output', function()
+      local root = make_root()
+      make_buffer(root, 'main.lua', { 'local x = 1' }, 'lua')
+      write_file(root, 'utils.lua', { 'return {}' })
+
+      local text = stub(related, {
+        find_related_files = function() return { root .. '/utils.lua' } end,
+      }, function() return py.yank_related({ notify = false, register = '"' }) end)
+
+      assert.is_not_nil(text)
+      assert.is_true(text:find('main.lua') ~= nil)
+      assert.is_true(text:find('local x = 1') ~= nil)
+    end)
+
+    it('includes current file even when no related files found', function()
       local root = make_root()
       make_buffer(root, 'main.lua', { 'local x = 1' }, 'lua')
 
@@ -253,7 +267,26 @@ describe('prompt-yank.related', function()
         find_related_files = function() return {} end,
       }, function() return py.yank_related({ notify = false, register = '"' }) end)
 
-      assert.is_nil(text)
+      assert.is_not_nil(text)
+      assert.is_true(text:find('main.lua') ~= nil)
+      assert.is_true(text:find('local x = 1') ~= nil)
+    end)
+
+    it('places current file before related files', function()
+      local root = make_root()
+      make_buffer(root, 'main.lua', { 'local x = 1' }, 'lua')
+      write_file(root, 'utils.lua', { 'return {}' })
+
+      local text = stub(related, {
+        find_related_files = function() return { root .. '/utils.lua' } end,
+      }, function() return py.yank_related({ notify = false, register = '"' }) end)
+
+      assert.is_not_nil(text)
+      local main_pos = text:find('main.lua')
+      local utils_pos = text:find('utils.lua')
+      assert.is_not_nil(main_pos)
+      assert.is_not_nil(utils_pos)
+      assert.is_true(main_pos < utils_pos)
     end)
 
     it('returns nil when no file open', function()
@@ -266,7 +299,7 @@ describe('prompt-yank.related', function()
       assert.is_nil(text)
     end)
 
-    it('includes template wrapper with origin and count', function()
+    it('includes template wrapper with origin and related count excluding current file', function()
       local root = make_root()
       local bufnr = make_buffer(root, 'main.lua', { 'local x = 1' }, 'lua')
       write_file(root, 'a.lua', { 'return 1' })
@@ -352,8 +385,10 @@ describe('prompt-yank.related', function()
       }, function() return py.yank_related({ notify = false, register = '"' }) end)
 
       assert.is_not_nil(text)
+      assert.is_true(text:find('main.lua') ~= nil)
       assert.is_true(text:find('a.lua') ~= nil)
       assert.is_true(text:find('b.lua') ~= nil)
+      assert.is_true(text:find('local x = 1') ~= nil)
       assert.is_true(text:find('return 1') ~= nil)
       assert.is_true(text:find('return 2') ~= nil)
     end)

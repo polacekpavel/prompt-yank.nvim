@@ -794,6 +794,10 @@ function M.yank_related(opts)
   local blocks = {}
   local skipped_sensitive = {}
 
+  local current_code = yank.get_buffer_text(bufnr)
+  local current_ctx = yank.build_ctx_for_buffer(bufnr, current_code, nil, nil)
+  table.insert(blocks, yank.format_code_block(current_ctx, opts))
+
   for _, fullpath in ipairs(paths) do
     local rel = util.relpath_under_root(fullpath, root)
     if rel then
@@ -827,11 +831,6 @@ function M.yank_related(opts)
     )
   end
 
-  if #blocks == 0 then
-    yank.notify('No related files found', vim.log.levels.INFO, opts)
-    return nil
-  end
-
   local joined = yank.join_blocks(blocks)
   local origin = util.display_path(current, root, conf.path_style)
   local tpl = config.resolve_template('related')
@@ -839,7 +838,7 @@ function M.yank_related(opts)
   if tpl then
     text = format_mod.render_template(tpl, {
       origin = origin,
-      related_count = #blocks,
+      related_count = #blocks - 1,
       related_blocks = joined,
     })
   else
@@ -847,8 +846,9 @@ function M.yank_related(opts)
   end
 
   yank.copy(text, opts)
+  local related_count = #blocks - 1
   yank.notify(
-    ('Copied %d related files for %s%s'):format(#blocks, origin, yank.token_suffix(text)),
+    ('Copied current file + %d related files for %s%s'):format(related_count, origin, yank.token_suffix(text)),
     nil,
     opts
   )
