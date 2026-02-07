@@ -63,6 +63,8 @@ local function apply_keymaps()
     M.yank_with_definitions_deep,
     'PromptYank: selection + deep definitions'
   )
+
+  nmap('copy_related', M.yank_related, 'PromptYank: related files')
 end
 
 function M.setup(opts)
@@ -761,6 +763,92 @@ function M.yank_with_definitions_deep(opts)
       ctx.filepath,
       yank.token_suffix(text)
     ),
+    nil,
+    opts
+  )
+  return text
+end
+
+function M.yank_related(opts)
+  opts = opts or {}
+  local yank = require('prompt-yank.yank')
+  local related = require('prompt-yank.related')
+  local util = require('prompt-yank.util')
+  local lang_mod = require('prompt-yank.lang')
+  local format_mod = require('prompt-yank.format')
+
+  local conf = config.get()
+  local bufnr = current_bufnr()
+  local root = get_root(bufnr)
+  local current = get_fullpath(bufnr)
+  if not current then
+    yank.notify('No file open', vim.log.levels.WARN, opts)
+    return nil
+  end
+
+  local paths = related.find_related_files(bufnr, root, {
+    max_files = (conf.related and conf.related.max_files) or 10,
+    timeout_ms = opts.timeout_ms or 2000,
+  })
+
+  local blocks = {}
+  local skipped_sensitive = {}
+
+  for _, fullpath in ipairs(paths) do
+    local rel = util.relpath_under_root(fullpath, root)
+    if rel then
+      if util.is_sensitive(rel, conf.sensitive_patterns) then
+        table.insert(skipped_sensitive, rel)
+      else
+        local code, err = yank.read_file(fullpath, conf.limits.max_file_bytes)
+        if code then
+          local language = lang_mod.for_path(fullpath, conf)
+          local ctx = yank.build_ctx_for_path(fullpath, root, code, language, nil, nil)
+          table.insert(blocks, yank.format_code_block(ctx, opts))
+        else
+          yank.notify(
+            ('Skipped %s: %s'):format(rel, err or 'unreadable'),
+            vim.log.levels.WARN,
+            opts
+          )
+        end
+      end
+    end
+  end
+
+  if #skipped_sensitive > 0 then
+    yank.notify(
+      ('Skipped %d sensitive file(s): %s'):format(
+        #skipped_sensitive,
+        table.concat(skipped_sensitive, ', ')
+      ),
+      vim.log.levels.WARN,
+      opts
+    )
+  end
+
+  if #blocks == 0 then
+    yank.notify('No related files found', vim.log.levels.INFO, opts)
+    return nil
+  end
+
+  local joined = yank.join_blocks(blocks)
+  local origin = util.display_path(current, root, conf.path_style)
+  local tpl = config.resolve_template('related')
+  local text
+  if tpl then
+    text = format_mod.render_template(tpl, {
+      origin = origin,
+      related_count = #blocks,
+      related_blocks = joined,
+    })
+  else
+    text = joined
+  end
+
+  yank.copy(text, opts)
+  yank.notify(
+    ('Copied %d related files for %s%s'):format(#blocks, origin, yank.token_suffix(text)),
     nil,
     opts
   )

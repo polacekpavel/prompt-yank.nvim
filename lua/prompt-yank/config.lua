@@ -23,6 +23,7 @@ M.defaults = {
     definitions_header = '\n\n---\n\n**Referenced Definitions:**\n\n',
     definitions_deep_header = '\n\n---\n\n**Referenced Definitions (deep):**\n\n',
     definition_item = '`{filepath}#L{start_line}-L{end_line}` (definition: {name})\n```{lang}\n{code}\n```',
+    related = '**Related files for `{origin}` ({related_count}):**\n\n{related_blocks}',
     multi_sep = '\n\n',
   },
   xml_templates = {
@@ -40,6 +41,7 @@ M.defaults = {
     definitions_deep_header = '\n<definitions type="deep">\n',
     definitions_footer = '</definitions>',
     definition_item = '<definition name="{name}" path="{filepath}" lines="{start_line}-{end_line}" language="{lang}">\n{code}\n</definition>',
+    related = '<related origin="{origin}" count="{related_count}">\n{related_blocks}\n</related>',
     multi_sep = '\n\n',
   },
   path_style = 'relative',
@@ -138,6 +140,9 @@ M.defaults = {
     '%.netrc$',
     '%.git%-credentials$',
   },
+  related = {
+    max_files = 10,
+  },
   picker = { preferred = 'auto' },
   git = { remote = 'origin' },
   keymaps = {
@@ -153,6 +158,7 @@ M.defaults = {
     copy_remote = '<Leader>yr',
     copy_with_definitions = '<Leader>yl',
     copy_with_definitions_deep = '<Leader>yL',
+    copy_related = '<Leader>yR',
   },
 }
 
