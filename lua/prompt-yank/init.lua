@@ -65,6 +65,7 @@ local function apply_keymaps()
   )
 
   nmap('copy_related', M.yank_related, 'PromptYank: related files')
+  nmap('copy_changes', M.yank_changes, 'PromptYank: recent changes')
 end
 
 function M.setup(opts)
@@ -766,6 +767,100 @@ function M.yank_with_definitions_deep(opts)
     nil,
     opts
   )
+  return text
+end
+
+function M.yank_changes(opts)
+  opts = opts or {}
+  local yank = require('prompt-yank.yank')
+  local git = require('prompt-yank.git')
+  local util = require('prompt-yank.util')
+  local format_mod = require('prompt-yank.format')
+
+  local conf = config.get()
+  local bufnr = current_bufnr()
+  local root = get_root(bufnr)
+
+  if not git.is_git_repo(root) then
+    yank.notify('Not a git repository', vim.log.levels.WARN, opts)
+    return nil
+  end
+
+  local scope = opts.scope
+  local scope_path
+  if scope == 'file' then
+    local fullpath = get_fullpath(bufnr)
+    if not fullpath then
+      yank.notify('No file open', vim.log.levels.WARN, opts)
+      return nil
+    end
+    scope_path = util.relpath_under_root(fullpath, root)
+    if not scope_path then
+      yank.notify('File is outside project root', vim.log.levels.WARN, opts)
+      return nil
+    end
+  elseif scope and scope ~= '' and scope ~= 'repo' then
+    scope_path = scope
+  end
+
+  local commit_count = opts.commit_count or (conf.changes and conf.changes.commit_count) or 10
+
+  local stat = git.diff_stat(root, scope_path)
+  local log = git.log(root, commit_count, scope_path)
+
+  if not stat and not log then
+    yank.notify('No recent changes found', vim.log.levels.INFO, opts)
+    return nil
+  end
+
+  local parts = {}
+  if stat then
+    local stat_tpl = config.resolve_template('changes_stat')
+    if stat_tpl then
+      table.insert(parts, format_mod.render_template(stat_tpl, { diff_stat = stat }))
+    else
+      table.insert(parts, stat)
+    end
+  end
+  if log then
+    local log_tpl = config.resolve_template('changes_log')
+    if log_tpl then
+      table.insert(
+        parts,
+        format_mod.render_template(log_tpl, {
+          commit_log = log,
+          commit_count = commit_count,
+        })
+      )
+    else
+      table.insert(parts, log)
+    end
+  end
+
+  local body = table.concat(parts, '\n\n')
+
+  local changes_scope = ''
+  local changes_scope_attr = ''
+  if scope_path then
+    changes_scope = (' (%s)'):format(scope_path)
+    changes_scope_attr = (' scope="%s"'):format(scope_path)
+  end
+
+  local tpl = config.resolve_template('changes')
+  local text
+  if tpl then
+    text = format_mod.render_template(tpl, {
+      changes_body = body,
+      changes_scope = changes_scope,
+      changes_scope_attr = changes_scope_attr,
+    })
+  else
+    text = body
+  end
+
+  yank.copy(text, opts)
+  local label = scope_path and scope_path or 'repo'
+  yank.notify(('Copied recent changes (%s)%s'):format(label, yank.token_suffix(text)), nil, opts)
   return text
 end
 

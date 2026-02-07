@@ -16,6 +16,7 @@ local subcommands = {
   'definitions',
   'definitions_deep',
   'related',
+  'changes',
   'tokens',
   'format',
   'formats',
@@ -124,6 +125,15 @@ function M.run(opts)
   end
 
   if sub == 'related' then return py.yank_related() end
+
+  if sub == 'changes' then
+    local count = as_int(args[2])
+    local scope = args[3]
+    local override = {}
+    if count then override.commit_count = count end
+    if scope and scope ~= '' then override.scope = scope end
+    return py.yank_changes(override)
+  end
 
   if sub == 'tokens' then
     local tokens = require('prompt-yank.tokens')

@@ -24,6 +24,9 @@ M.defaults = {
     definitions_deep_header = '\n\n---\n\n**Referenced Definitions (deep):**\n\n',
     definition_item = '`{filepath}#L{start_line}-L{end_line}` (definition: {name})\n```{lang}\n{code}\n```',
     related = '**Related files for `{origin}` ({related_count}):**\n\n{related_blocks}',
+    changes = '**Recent Changes{changes_scope}:**\n\n{changes_body}',
+    changes_stat = '**Changed files:**\n```\n{diff_stat}\n```',
+    changes_log = '**Recent commits ({commit_count}):**\n```\n{commit_log}\n```',
     multi_sep = '\n\n',
   },
   xml_templates = {
@@ -42,6 +45,9 @@ M.defaults = {
     definitions_footer = '</definitions>',
     definition_item = '<definition name="{name}" path="{filepath}" lines="{start_line}-{end_line}" language="{lang}">\n{code}\n</definition>',
     related = '<related origin="{origin}" count="{related_count}">\n{related_blocks}\n</related>',
+    changes = '<changes{changes_scope_attr}>\n{changes_body}\n</changes>',
+    changes_stat = '<diff-stat>\n{diff_stat}\n</diff-stat>',
+    changes_log = '<commits count="{commit_count}">\n{commit_log}\n</commits>',
     multi_sep = '\n\n',
   },
   path_style = 'relative',
@@ -143,6 +149,9 @@ M.defaults = {
   related = {
     max_files = 10,
   },
+  changes = {
+    commit_count = 10,
+  },
   picker = { preferred = 'auto' },
   git = { remote = 'origin' },
   keymaps = {
@@ -159,6 +168,7 @@ M.defaults = {
     copy_with_definitions = '<Leader>yl',
     copy_with_definitions_deep = '<Leader>yL',
     copy_related = '<Leader>yR',
+    copy_changes = '<Leader>yg',
   },
 }
 

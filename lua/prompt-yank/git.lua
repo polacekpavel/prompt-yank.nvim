@@ -136,6 +136,40 @@ local function anchor_for(provider, filepath, line_start, line_end)
   return ''
 end
 
+function M.diff_stat(root, scope)
+  local cmd = { 'git', '-C', root, 'diff', '--stat' }
+  if scope then
+    table.insert(cmd, '--')
+    table.insert(cmd, scope)
+  end
+  local out, code = util.system(cmd)
+  if code ~= 0 then return nil end
+  out = util.trim(out)
+  if out == '' then return nil end
+  return out
+end
+
+function M.log(root, count, scope)
+  count = count or 10
+  local cmd = {
+    'git',
+    '-C',
+    root,
+    'log',
+    ('--max-count=%d'):format(count),
+    '--format=%h %s (%cr)',
+  }
+  if scope then
+    table.insert(cmd, '--')
+    table.insert(cmd, scope)
+  end
+  local out, code = util.system(cmd)
+  if code ~= 0 then return nil end
+  out = util.trim(out)
+  if out == '' then return nil end
+  return out
+end
+
 function M.build_remote_url(base_url, provider, commit, filepath, line_start, line_end)
   if not base_url or not commit or not filepath then return nil end
   provider = provider or M.detect_provider(base_url)
