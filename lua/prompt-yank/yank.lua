@@ -1,6 +1,7 @@
 local config = require('prompt-yank.config')
 local format = require('prompt-yank.format')
 local lang = require('prompt-yank.lang')
+local tokens = require('prompt-yank.tokens')
 local util = require('prompt-yank.util')
 
 local M = {}
@@ -95,6 +96,12 @@ function M.notify(message, level, opts)
   if opts and opts.notify ~= nil then notify = opts.notify end
   if not notify then return end
   vim.notify(message, level or vim.log.levels.INFO)
+end
+
+function M.token_suffix(text)
+  local count = tokens.estimate(text)
+  if count <= 0 then return '' end
+  return (' (%s)'):format(tokens.format_count(count))
 end
 
 function M.copy(text, opts)
