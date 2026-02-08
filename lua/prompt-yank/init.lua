@@ -114,7 +114,11 @@ function M.yank_selection(opts)
   local text = yank.format_code_block(ctx, opts)
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %d lines from %s'):format(line_end - line_start + 1, ctx.filepath),
+    ('Copied %d lines from %s%s'):format(
+      line_end - line_start + 1,
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -137,7 +141,11 @@ function M.yank_file(opts)
   local text = yank.format_code_block(ctx, opts)
   yank.copy(text, opts)
   yank.notify(
-    ('Copied entire file (%d lines) from %s'):format(total_lines, ctx.filepath),
+    ('Copied entire file (%d lines) from %s%s'):format(
+      total_lines,
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -152,7 +160,11 @@ function M.yank_range(line_start, line_end, opts)
   local text = yank.format_code_block(ctx, opts)
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %d lines from %s'):format(line_end - line_start + 1, ctx.filepath),
+    ('Copied %d lines from %s%s'):format(
+      line_end - line_start + 1,
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -180,7 +192,11 @@ function M.yank_diagnostics(opts)
   local text = yank.format_named_template('diagnostics', ctx, opts)
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %d lines + diagnostics from %s'):format(line_end - line_start + 1, ctx.filepath),
+    ('Copied %d lines + diagnostics from %s%s'):format(
+      line_end - line_start + 1,
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -212,7 +228,11 @@ function M.yank_diff(opts)
       local ctx = yank.build_ctx_for_buffer(bufnr, code, range_start, range_end)
       local text = yank.format_code_block(ctx, opts)
       yank.copy(text, opts)
-      yank.notify(('Copied selection from %s'):format(ctx.filepath), nil, opts)
+      yank.notify(
+        ('Copied selection from %s%s'):format(ctx.filepath, yank.token_suffix(text)),
+        nil,
+        opts
+      )
       return text
     end
     return nil
@@ -231,7 +251,10 @@ function M.yank_diff(opts)
       local text = yank.format_code_block(ctx, opts)
       yank.copy(text, opts)
       yank.notify(
-        ('No uncommitted changes; copied selection from %s'):format(ctx.filepath),
+        ('No uncommitted changes; copied selection from %s%s'):format(
+          ctx.filepath,
+          yank.token_suffix(text)
+        ),
         nil,
         opts
       )
@@ -241,7 +264,11 @@ function M.yank_diff(opts)
     ctx.diff = diff
     local text = yank.format_named_template('diff_with_selection', ctx, opts)
     yank.copy(text, opts)
-    yank.notify(('Copied selection + diff from %s'):format(ctx.filepath), nil, opts)
+    yank.notify(
+      ('Copied selection + diff from %s%s'):format(ctx.filepath, yank.token_suffix(text)),
+      nil,
+      opts
+    )
     return text
   end
 
@@ -254,7 +281,7 @@ function M.yank_diff(opts)
   ctx.diff = diff
   local text = yank.format_named_template('diff_file', ctx, opts)
   yank.copy(text, opts)
-  yank.notify(('Copied diff for %s'):format(ctx.filepath), nil, opts)
+  yank.notify(('Copied diff for %s%s'):format(ctx.filepath, yank.token_suffix(text)), nil, opts)
   return text
 end
 
@@ -297,7 +324,7 @@ function M.yank_blame(opts)
   local template = range_start and 'blame_selection' or 'blame_file'
   local text = yank.format_named_template(template, ctx, opts)
   yank.copy(text, opts)
-  yank.notify(('Copied blame for %s'):format(ctx.filepath), nil, opts)
+  yank.notify(('Copied blame for %s%s'):format(ctx.filepath, yank.token_suffix(text)), nil, opts)
   return text
 end
 
@@ -346,7 +373,11 @@ function M.yank_tree(opts)
 
     local text = yank.format_named_template('tree_with_selection', ctx, opts)
     yank.copy(text, opts)
-    yank.notify(('Copied tree path + selection from %s'):format(ctx.filepath), nil, opts)
+    yank.notify(
+      ('Copied tree path + selection from %s%s'):format(ctx.filepath, yank.token_suffix(text)),
+      nil,
+      opts
+    )
     return text
   end
 
@@ -360,7 +391,11 @@ function M.yank_tree(opts)
 
   local text = yank.format_named_template('tree_full', ctx, opts)
   yank.copy(text, opts)
-  yank.notify(('Copied project tree (%d items)'):format(item_count), nil, opts)
+  yank.notify(
+    ('Copied project tree (%d items)%s'):format(item_count, yank.token_suffix(text)),
+    nil,
+    opts
+  )
   return text
 end
 
@@ -392,7 +427,12 @@ function M.yank_context(opts)
   local text = yank.format_named_template('context', ctx, opts)
   yank.copy(text, opts)
   yank.notify(
-    ('Copied context (L%d-L%d) from %s'):format(start_ctx, end_ctx, ctx.filepath),
+    ('Copied context (L%d-L%d) from %s%s'):format(
+      start_ctx,
+      end_ctx,
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -474,7 +514,11 @@ function M.yank_remote(opts)
 
   local text = yank.format_named_template('remote_with_code', ctx, opts)
   yank.copy(text, opts)
-  yank.notify(('Copied remote URL + code for %s'):format(ctx.filepath), nil, opts)
+  yank.notify(
+    ('Copied remote URL + code for %s%s'):format(ctx.filepath, yank.token_suffix(text)),
+    nil,
+    opts
+  )
   return text
 end
 
@@ -504,7 +548,12 @@ function M.yank_function(opts)
 
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %s (%s) from %s'):format(info.node_type, info.name or 'unnamed', ctx.filepath),
+    ('Copied %s (%s) from %s%s'):format(
+      info.node_type,
+      info.name or 'unnamed',
+      ctx.filepath,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
@@ -591,7 +640,7 @@ function M.yank_files(paths, opts)
 
   local text = yank.join_blocks(blocks)
   yank.copy(text, opts)
-  yank.notify(('Copied %d files'):format(#blocks), nil, opts)
+  yank.notify(('Copied %d files%s'):format(#blocks, yank.token_suffix(text)), nil, opts)
   return text
 end
 
@@ -633,7 +682,10 @@ function M.yank_with_definitions(opts)
   if #definitions == 0 then
     yank.copy(selection_block, opts)
     yank.notify(
-      ('Copied %d lines (no definitions found)'):format(line_end - line_start + 1),
+      ('Copied %d lines (no definitions found)%s'):format(
+        line_end - line_start + 1,
+        yank.token_suffix(selection_block)
+      ),
       nil,
       opts
     )
@@ -648,10 +700,11 @@ function M.yank_with_definitions(opts)
 
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %d lines + %d definitions from %s'):format(
+    ('Copied %d lines + %d definitions from %s%s'):format(
       line_end - line_start + 1,
       #definitions,
-      ctx.filepath
+      ctx.filepath,
+      yank.token_suffix(text)
     ),
     nil,
     opts
@@ -684,7 +737,10 @@ function M.yank_with_definitions_deep(opts)
   if #definitions == 0 then
     yank.copy(selection_block, opts)
     yank.notify(
-      ('Copied %d lines (no definitions found)'):format(line_end - line_start + 1),
+      ('Copied %d lines (no definitions found)%s'):format(
+        line_end - line_start + 1,
+        yank.token_suffix(selection_block)
+      ),
       nil,
       opts
     )
@@ -699,10 +755,11 @@ function M.yank_with_definitions_deep(opts)
 
   yank.copy(text, opts)
   yank.notify(
-    ('Copied %d lines + %d deep definitions from %s'):format(
+    ('Copied %d lines + %d deep definitions from %s%s'):format(
       line_end - line_start + 1,
       #definitions,
-      ctx.filepath
+      ctx.filepath,
+      yank.token_suffix(text)
     ),
     nil,
     opts
