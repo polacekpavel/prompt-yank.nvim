@@ -848,7 +848,11 @@ function M.yank_related(opts)
   yank.copy(text, opts)
   local related_count = #blocks - 1
   yank.notify(
-    ('Copied current file + %d related files for %s%s'):format(related_count, origin, yank.token_suffix(text)),
+    ('Copied current file + %d related files for %s%s'):format(
+      related_count,
+      origin,
+      yank.token_suffix(text)
+    ),
     nil,
     opts
   )
