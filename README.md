@@ -47,6 +47,7 @@ Think of it as a **Copy for AI** button in Neovim.
     { "<Leader>yf", mode = "n", desc = "PromptYank: function" },
     { "<Leader>yl", mode = "v", desc = "PromptYank: selection + definitions" },
     { "<Leader>yL", mode = "v", desc = "PromptYank: selection + deep definitions" },
+    { "<Leader>yR", mode = "n", desc = "PromptYank: related files" },
   },
   opts = {},
   config = function(_, opts)
@@ -151,7 +152,7 @@ wraps the code in an additional `<code>` tag inside `<file>`.
 Everything is exposed via one command:
 
 - `:PromptYank` (smart: range → selection, no range → file)
-- `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote|definitions|definitions_deep`
+- `:PromptYank file|selection|function|multi|diff|blame|diagnostics|context|tree|remote|definitions|definitions_deep|related`
 - `:PromptYank format [name]`
 - `:PromptYank formats`
 - `:PromptYank style [markdown|xml]`
@@ -174,6 +175,7 @@ Normal mode:
 - `<Leader>yb` copy blame (current file)
 - `<Leader>yt` copy project tree
 - `<Leader>yr` copy remote URL + code
+- `<Leader>yR` copy related files (smart context slice)
 
 Visual mode:
 - `<Leader>yp` copy selection
@@ -248,6 +250,37 @@ export function ProfileCard({ user }: { user: User }) {
 - `timeout_ms` — LSP request timeout (default: 2000ms)
 - `max_depth` — recursion depth for deep version (default: 3)
 - `max_definitions` — cap on total definitions (default: 50)
+
+### Related Context
+
+Copy the current file together with its related files — a smart slice through your codebase
+tailored for LLM context. Instead of manually picking which files to include, `related`
+automatically discovers dependencies via **Tree-sitter import analysis** and
+**LSP references**, then bundles them into a single clipboard payload.
+
+This gives the LLM a focused, relevant cross-section of your project without dumping the
+entire repo.
+
+- **`<Leader>yR`** — copy current file + related files
+
+How files are discovered:
+
+1. **Imports** — Tree-sitter parses `require()` (Lua), `import` (JS/TS), and `from` (Python)
+   statements, then resolves them to real files within the project.
+2. **LSP references** — document symbols are queried for cross-file references, surfacing
+   files that use or are used by the current file.
+3. Results are deduplicated, capped at `max_files` (default 10), and sensitive files are
+   automatically skipped.
+
+#### Configuration
+
+```lua
+require("prompt-yank").setup({
+  related = {
+    max_files = 10, -- maximum number of related files to include
+  },
+})
+```
 
 ### Notes
 

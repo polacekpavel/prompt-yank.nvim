@@ -15,6 +15,7 @@ local subcommands = {
   'remote',
   'definitions',
   'definitions_deep',
+  'related',
   'tokens',
   'format',
   'formats',
@@ -121,6 +122,8 @@ function M.run(opts)
     end
     return py.yank_with_definitions_deep(override)
   end
+
+  if sub == 'related' then return py.yank_related() end
 
   if sub == 'tokens' then
     local tokens = require('prompt-yank.tokens')
