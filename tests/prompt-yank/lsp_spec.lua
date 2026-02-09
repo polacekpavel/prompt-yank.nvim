@@ -543,41 +543,172 @@ describe('prompt-yank.lsp', function()
     end)
   end)
 
-  describe('python identifier filtering', function()
-    it('skips Python keywords self, True, False, None', function()
-      local root = make_root()
-      make_buffer(
-        root,
-        'test.py',
-        { 'x = self.value', 'y = True', 'z = None', 'w = False', 'result = my_func()' },
-        'python'
-      )
-
-      local info = lsp.debug_selection(0, 1, 5)
-
+  describe('filetype-aware identifier filtering', function()
+    local function get_names(bufnr, start_line, end_line)
+      local info = lsp.debug_selection(bufnr or 0, start_line, end_line)
       local names = {}
       for _, ident in ipairs(info.identifiers) do
         names[ident.name] = true
       end
+      return names
+    end
+
+    it('skips Python keywords self, cls, True, False, None', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.py',
+        { 'x = self.value', 'y = True', 'z = None', 'w = False', 'result = cls.create()' },
+        'python'
+      )
+
+      local names = get_names(0, 1, 5)
 
       assert.is_nil(names['self'])
+      assert.is_nil(names['cls'])
       assert.is_nil(names['True'])
       assert.is_nil(names['False'])
       assert.is_nil(names['None'])
     end)
 
-    it('skips cls in Python', function()
+    it('skips Lua self', function()
       local root = make_root()
-      make_buffer(root, 'test.py', { 'x = cls.create()' }, 'python')
+      make_buffer(root, 'test.lua', { 'local x = self.value' }, 'lua')
 
-      local info = lsp.debug_selection(0, 1, 1)
+      local names = get_names(0, 1, 1)
 
-      local names = {}
-      for _, ident in ipairs(info.identifiers) do
-        names[ident.name] = true
-      end
+      assert.is_nil(names['self'])
+    end)
 
-      assert.is_nil(names['cls'])
+    it('skips JS/TS this, undefined, super', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.ts',
+        { 'const x = this.value', 'const y = undefined', 'super.init()' },
+        'typescript'
+      )
+
+      local names = get_names(0, 1, 3)
+
+      assert.is_nil(names['this'])
+      assert.is_nil(names['undefined'])
+      assert.is_nil(names['super'])
+    end)
+
+    it('skips C NULL', function()
+      local root = make_root()
+      make_buffer(root, 'test.c', { 'int *p = NULL;', 'int x = my_func();' }, 'c')
+
+      local names = get_names(0, 1, 2)
+
+      assert.is_nil(names['NULL'])
+    end)
+
+    it('skips C++ this, NULL, nullptr', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.cpp',
+        { 'auto p = this->value;', 'auto q = NULL;', 'auto r = nullptr;' },
+        'cpp'
+      )
+
+      local names = get_names(0, 1, 3)
+
+      assert.is_nil(names['this'])
+      assert.is_nil(names['NULL'])
+      assert.is_nil(names['nullptr'])
+    end)
+
+    it('skips Rust self and Self', function()
+      local root = make_root()
+      make_buffer(root, 'test.rs', { 'let x = self.value;', 'let y = Self::new();' }, 'rust')
+
+      local names = get_names(0, 1, 2)
+
+      assert.is_nil(names['self'])
+      assert.is_nil(names['Self'])
+    end)
+
+    it('skips Swift self, Self, super', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.swift',
+        { 'let x = self.value', 'let y = Self.defaultValue', 'super.init()' },
+        'swift'
+      )
+
+      local names = get_names(0, 1, 3)
+
+      assert.is_nil(names['self'])
+      assert.is_nil(names['Self'])
+      assert.is_nil(names['super'])
+    end)
+
+    it('skips Go common keywords true, false, nil', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.go',
+        { 'package main', 'var x = true', 'var y = false', 'var z = nil' },
+        'go'
+      )
+
+      local names = get_names(0, 1, 4)
+
+      assert.is_nil(names['true'])
+      assert.is_nil(names['false'])
+      assert.is_nil(names['nil'])
+    end)
+
+    it('does not skip Python keywords in Lua', function()
+      local root = make_root()
+      make_buffer(root, 'test.lua', { 'local None = 1', 'local True = 2' }, 'lua')
+
+      local names = get_names(0, 1, 2)
+
+      assert.is_true(names['None'] == true)
+      assert.is_true(names['True'] == true)
+    end)
+
+    it('does not skip NULL in Lua', function()
+      local root = make_root()
+      make_buffer(root, 'test.lua', { 'local NULL = 1' }, 'lua')
+
+      local names = get_names(0, 1, 1)
+
+      assert.is_true(names['NULL'] == true)
+    end)
+
+    it('does not skip C NULL in Lua', function()
+      local root = make_root()
+      make_buffer(root, 'test.lua', { 'local NULL = require("something")' }, 'lua')
+
+      local names = get_names(0, 1, 1)
+
+      assert.is_true(names['NULL'] == true)
+    end)
+
+    it('skips self in Lua but not NULL', function()
+      local root = make_root()
+      make_buffer(root, 'test.lua', { 'local x = self.value', 'local NULL = 1' }, 'lua')
+
+      local names = get_names(0, 1, 2)
+
+      assert.is_nil(names['self'])
+      assert.is_true(names['NULL'] == true)
+    end)
+
+    it('skips NULL in C but not self', function()
+      local root = make_root()
+      make_buffer(root, 'test.c', { 'int *p = NULL;', 'int self = 1;' }, 'c')
+
+      local names = get_names(0, 1, 2)
+
+      assert.is_nil(names['NULL'])
+      assert.is_true(names['self'] == true)
     end)
   end)
 
