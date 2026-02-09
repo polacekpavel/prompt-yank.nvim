@@ -158,6 +158,58 @@ describe('prompt-yank.related', function()
       assert.is_true(result:find('mypackage/utils%.py') ~= nil)
     end)
 
+    it('resolves double-dot relative python import', function()
+      local root = make_root()
+      write_file(root, 'pkg/sibling.py', { 'pass' })
+      local current = root .. '/pkg/sub/main.py'
+
+      local result = related.resolve_import('..sibling', current, root, 'python')
+
+      assert.is_not_nil(result)
+      assert.is_true(result:find('sibling%.py') ~= nil)
+    end)
+
+    it('resolves triple-dot relative python import', function()
+      local root = make_root()
+      write_file(root, 'a/top.py', { 'pass' })
+      local current = root .. '/a/b/c/main.py'
+
+      local result = related.resolve_import('...top', current, root, 'python')
+
+      assert.is_not_nil(result)
+      assert.is_true(result:find('top%.py') ~= nil)
+    end)
+
+    it('resolves bare dot python import to __init__.py', function()
+      local root = make_root()
+      write_file(root, 'pkg/__init__.py', { 'pass' })
+      local current = root .. '/pkg/main.py'
+
+      local result = related.resolve_import('.', current, root, 'python')
+
+      assert.is_not_nil(result)
+      assert.is_true(result:find('__init__%.py') ~= nil)
+    end)
+
+    it('resolves python import to __init__.py when module is a package', function()
+      local root = make_root()
+      write_file(root, 'mypackage/__init__.py', { 'pass' })
+
+      local result = related.resolve_import('mypackage', root .. '/main.py', root, 'python')
+
+      assert.is_not_nil(result)
+      assert.is_true(result:find('__init__%.py') ~= nil)
+    end)
+
+    it('returns nil for non-existent double-dot python import', function()
+      local root = make_root()
+      local current = root .. '/pkg/sub/main.py'
+
+      local result = related.resolve_import('..nonexistent', current, root, 'python')
+
+      assert.is_nil(result)
+    end)
+
     it('returns nil for unsupported filetype', function()
       local root = make_root()
 

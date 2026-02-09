@@ -543,6 +543,44 @@ describe('prompt-yank.lsp', function()
     end)
   end)
 
+  describe('python identifier filtering', function()
+    it('skips Python keywords self, True, False, None', function()
+      local root = make_root()
+      make_buffer(
+        root,
+        'test.py',
+        { 'x = self.value', 'y = True', 'z = None', 'w = False', 'result = my_func()' },
+        'python'
+      )
+
+      local info = lsp.debug_selection(0, 1, 5)
+
+      local names = {}
+      for _, ident in ipairs(info.identifiers) do
+        names[ident.name] = true
+      end
+
+      assert.is_nil(names['self'])
+      assert.is_nil(names['True'])
+      assert.is_nil(names['False'])
+      assert.is_nil(names['None'])
+    end)
+
+    it('skips cls in Python', function()
+      local root = make_root()
+      make_buffer(root, 'test.py', { 'x = cls.create()' }, 'python')
+
+      local info = lsp.debug_selection(0, 1, 1)
+
+      local names = {}
+      for _, ident in ipairs(info.identifiers) do
+        names[ident.name] = true
+      end
+
+      assert.is_nil(names['cls'])
+    end)
+  end)
+
   describe('debug_selection', function()
     it('returns debug info structure', function()
       local root = make_root()

@@ -21,6 +21,11 @@ local skip_names = {
   ['undefined'] = true,
   ['this'] = true,
   ['super'] = true,
+  ['self'] = true,
+  ['cls'] = true,
+  ['True'] = true,
+  ['False'] = true,
+  ['None'] = true,
 }
 
 local function get_identifiers_in_range(bufnr, start_line, end_line)
@@ -228,6 +233,8 @@ local function read_definition_code(filepath, start_line)
     const_declaration = true,
     let_declaration = true,
     export_statement = true,
+    decorated_definition = true,
+    assignment = true,
   }
 
   while node do

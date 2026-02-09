@@ -81,27 +81,32 @@ end
 local function resolve_python_import(module_str, current_fullpath, root)
   if not module_str or module_str == '' then return nil end
 
-  if module_str:sub(1, 1) == '.' then
-    local base_dir = dirname(current_fullpath)
-    local rest = module_str:sub(2):gsub('%.', '/')
-    if rest == '' then return nil end
-    local candidate = join_path(base_dir, rest .. '.py')
-    if file_exists(candidate) then return candidate end
-    candidate = join_path(base_dir, rest .. '/__init__.py')
-    if file_exists(candidate) then return candidate end
+  local function try_candidates(base, relmod)
+    if relmod == '' then
+      local init = join_path(base, '__init__.py')
+      if file_exists(init) then return init end
+      return nil
+    end
+    local p = relmod:gsub('%.', '/')
+    local f = join_path(base, p .. '.py')
+    if file_exists(f) then return f end
+    local init = join_path(base, p .. '/__init__.py')
+    if file_exists(init) then return init end
     return nil
   end
 
-  local rel = module_str:gsub('%.', '/')
-  local candidates = {
-    join_path(root, rel .. '.py'),
-    join_path(root, rel .. '/__init__.py'),
-  }
-  for _, path in ipairs(candidates) do
-    if file_exists(path) then return path end
+  if module_str:sub(1, 1) == '.' then
+    local dots = module_str:match('^(%.+)') or '.'
+    local n = #dots
+    local rest = module_str:sub(n + 1)
+    local base = dirname(current_fullpath)
+    for _ = 2, n do
+      base = dirname(base)
+    end
+    return try_candidates(base, rest)
   end
 
-  return nil
+  return try_candidates(root, module_str)
 end
 
 local function extract_imports_treesitter(bufnr)
@@ -203,11 +208,49 @@ local function extract_imports_treesitter(bufnr)
     end
 
     if ft == 'python' then
-      if node_type == 'import_from_statement' then
+      if node_type == 'import_statement' then
         for child in node:iter_children() do
-          if child:type() == 'dotted_name' or child:type() == 'relative_import' then
+          if child:type() == 'dotted_name' then
             local s_ok, s_text = pcall(vim.treesitter.get_node_text, child, bufnr)
             if s_ok and s_text then add_import(s_text) end
+          elseif child:type() == 'aliased_import' then
+            for grand in child:iter_children() do
+              if grand:type() == 'dotted_name' then
+                local g_ok, g_text = pcall(vim.treesitter.get_node_text, grand, bufnr)
+                if g_ok and g_text then add_import(g_text) end
+              end
+            end
+          end
+        end
+      elseif node_type == 'import_from_statement' then
+        local prefix = nil
+        for child in node:iter_children() do
+          if child:type() == 'relative_import' then
+            local s_ok, s_text = pcall(vim.treesitter.get_node_text, child, bufnr)
+            if s_ok and s_text then prefix = s_text end
+            break
+          end
+          if child:type() == 'dotted_name' then
+            local s_ok, s_text = pcall(vim.treesitter.get_node_text, child, bufnr)
+            if s_ok and s_text then prefix = s_text end
+            break
+          end
+        end
+        if prefix then add_import(prefix) end
+
+        if prefix and prefix:match('^%.') then
+          for child in node:iter_children() do
+            if child:type() == 'dotted_name' then
+              local s_ok, s_text = pcall(vim.treesitter.get_node_text, child, bufnr)
+              if s_ok and s_text and s_text ~= prefix then add_import(prefix .. s_text) end
+            elseif child:type() == 'aliased_import' then
+              for grand in child:iter_children() do
+                if grand:type() == 'dotted_name' then
+                  local g_ok, g_text = pcall(vim.treesitter.get_node_text, grand, bufnr)
+                  if g_ok and g_text then add_import(prefix .. g_text) end
+                end
+              end
+            end
           end
         end
       end
