@@ -14,14 +14,38 @@ local identifier_types = {
   namespace_identifier = true,
 }
 
-local skip_names = {
+local skip_names_common = {
   ['true'] = true,
   ['false'] = true,
   ['null'] = true,
-  ['undefined'] = true,
-  ['this'] = true,
-  ['super'] = true,
+  ['nil'] = true,
 }
+
+local skip_names_by_ft = {
+  javascript = { ['undefined'] = true, ['this'] = true, ['super'] = true },
+  typescript = { ['undefined'] = true, ['this'] = true, ['super'] = true },
+  typescriptreact = { ['undefined'] = true, ['this'] = true, ['super'] = true },
+  javascriptreact = { ['undefined'] = true, ['this'] = true, ['super'] = true },
+  python = { ['self'] = true, ['cls'] = true, ['True'] = true, ['False'] = true, ['None'] = true },
+  java = { ['this'] = true, ['super'] = true },
+  kotlin = { ['this'] = true, ['super'] = true },
+  cs = { ['this'] = true, ['base'] = true },
+  dart = { ['this'] = true, ['super'] = true },
+  ruby = { ['self'] = true },
+  php = { ['this'] = true, ['self'] = true, ['parent'] = true },
+  c = { ['NULL'] = true },
+  cpp = { ['this'] = true, ['NULL'] = true, ['nullptr'] = true },
+  lua = { ['self'] = true },
+  swift = { ['self'] = true, ['Self'] = true, ['super'] = true },
+  rust = { ['self'] = true, ['Self'] = true },
+}
+
+local function should_skip_name(text, bufnr)
+  if skip_names_common[text] then return true end
+  local ft = vim.bo[bufnr or 0].filetype
+  local ft_skips = skip_names_by_ft[ft]
+  return ft_skips ~= nil and ft_skips[text] == true
+end
 
 local function get_identifiers_in_range(bufnr, start_line, end_line)
   if not vim.treesitter or not vim.treesitter.get_parser then return {} end
@@ -48,7 +72,13 @@ local function get_identifiers_in_range(bufnr, start_line, end_line)
 
       if identifier_types[node_type] then
         local text_ok, text = pcall(vim.treesitter.get_node_text, node, bufnr)
-        if text_ok and text and text ~= '' and not skip_names[text] and not seen[text] then
+        if
+          text_ok
+          and text
+          and text ~= ''
+          and not should_skip_name(text, bufnr)
+          and not seen[text]
+        then
           seen[text] = true
           table.insert(identifiers, { name = text, line = sr, col = sc })
         end
@@ -217,10 +247,6 @@ local function read_definition_code(filepath, start_line)
     method_declaration = true,
     class_declaration = true,
     class_definition = true,
-    struct_item = true,
-    enum_item = true,
-    impl_item = true,
-    trait_item = true,
     interface_declaration = true,
     type_alias_declaration = true,
     lexical_declaration = true,
@@ -228,6 +254,48 @@ local function read_definition_code(filepath, start_line)
     const_declaration = true,
     let_declaration = true,
     export_statement = true,
+    decorated_definition = true,
+    assignment = true,
+    struct_item = true,
+    enum_item = true,
+    impl_item = true,
+    trait_item = true,
+    union_item = true,
+    const_item = true,
+    static_item = true,
+    type_item = true,
+    mod_item = true,
+    macro_definition = true,
+    type_declaration = true,
+    type_spec = true,
+    type_alias = true,
+    constructor_declaration = true,
+    field_declaration = true,
+    enum_declaration = true,
+    record_declaration = true,
+    struct_declaration = true,
+    property_declaration = true,
+    namespace_declaration = true,
+    namespace_definition = true,
+    delegate_declaration = true,
+    event_declaration = true,
+    operator_declaration = true,
+    declaration = true,
+    type_definition = true,
+    struct_specifier = true,
+    enum_specifier = true,
+    union_specifier = true,
+    class_specifier = true,
+    template_declaration = true,
+    alias_declaration = true,
+    using_declaration = true,
+    ['method'] = true,
+    ['module'] = true,
+    singleton_method = true,
+    object_declaration = true,
+    trait_declaration = true,
+    mixin_declaration = true,
+    extension_declaration = true,
   }
 
   while node do
