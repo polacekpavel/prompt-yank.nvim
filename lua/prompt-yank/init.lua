@@ -26,12 +26,13 @@ local function apply_keymaps()
   local function vmap(name, fn, desc)
     local km = parse(keymaps[name])
     if not km or not km.lhs then return end
-    vim.keymap.set(
-      'v',
-      km.lhs,
-      function() fn({ format = km.format, from_visual = true }) end,
-      keymap_opts(desc)
-    )
+    vim.keymap.set('v', km.lhs, function()
+      fn({ format = km.format, from_visual = true })
+      if conf.exit_visual then
+        local esc = vim.api.nvim_replace_termcodes('<Esc>', true, false, true)
+        vim.api.nvim_feedkeys(esc, 'nx', false)
+      end
+    end, keymap_opts(desc))
   end
 
   nmap('copy_file', M.yank_file, 'PromptYank: file')
