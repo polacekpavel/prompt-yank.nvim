@@ -143,6 +143,7 @@ M.defaults = {
   related = {
     max_files = 10,
   },
+  exit_visual = true,
   picker = { preferred = 'auto' },
   git = { remote = 'origin' },
   keymaps = {
