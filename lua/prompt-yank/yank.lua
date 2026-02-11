@@ -107,7 +107,13 @@ end
 function M.copy(text, opts)
   local conf = config.get()
   local register = (opts and opts.register) or conf.register
-  vim.fn.setreg(register, text, 'v')
+  if type(register) == 'table' then
+    for _, reg in ipairs(register) do
+      vim.fn.setreg(reg, text, 'v')
+    end
+  else
+    vim.fn.setreg(register, text, 'v')
+  end
   return text
 end
 
