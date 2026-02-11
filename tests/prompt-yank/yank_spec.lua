@@ -1,5 +1,42 @@
 local yank = require('prompt-yank.yank')
 
+describe('prompt-yank.yank copy register', function()
+  local config = require('prompt-yank.config')
+
+  before_each(function()
+    config.setup({ notify = false, register = '+' })
+    for _, r in ipairs({ '"', '*', '+', 'a', 'b' }) do
+      vim.fn.setreg(r, '')
+    end
+  end)
+
+  it('copies to a single register string', function()
+    config.setup({ notify = false, register = '"' })
+    yank.copy('hello')
+    assert.equals('hello', vim.fn.getreg('"'))
+  end)
+
+  it('copies to multiple registers when register is a list', function()
+    config.setup({ notify = false, register = { 'a', 'b' } })
+    yank.copy('multi')
+    assert.equals('multi', vim.fn.getreg('a'))
+    assert.equals('multi', vim.fn.getreg('b'))
+  end)
+
+  it('opts.register list overrides config', function()
+    config.setup({ notify = false, register = '"' })
+    yank.copy('override', { register = { 'a', 'b' } })
+    assert.equals('override', vim.fn.getreg('a'))
+    assert.equals('override', vim.fn.getreg('b'))
+  end)
+
+  it('opts.register string overrides config', function()
+    config.setup({ notify = false, register = '"' })
+    yank.copy('single', { register = 'a' })
+    assert.equals('single', vim.fn.getreg('a'))
+  end)
+end)
+
 describe('prompt-yank.yank ctx placeholders', function()
   it('computes line placeholders for ranges', function()
     local ctx = yank.build_ctx_for_path('/tmp/a.lua', '/tmp', 'x', 'lua', 1, 3)

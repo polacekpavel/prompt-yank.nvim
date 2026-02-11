@@ -282,6 +282,18 @@ require("prompt-yank").setup({
 })
 ```
 
+### Register
+
+By default, yanked text is written to the `+` (system clipboard) register.
+You can set `register` to any single register or a list of registers:
+
+```lua
+require("prompt-yank").setup({
+  register = "+",            -- default: system clipboard
+  -- register = { "*", "+" }, -- write to both selection and clipboard registers
+})
+```
+
 ### Notes
 
 - No required dependencies (pure Lua).
