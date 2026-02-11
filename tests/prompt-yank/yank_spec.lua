@@ -3,7 +3,12 @@ local yank = require('prompt-yank.yank')
 describe('prompt-yank.yank copy register', function()
   local config = require('prompt-yank.config')
 
-  before_each(function() config.setup({ notify = false, register = '+' }) end)
+  before_each(function()
+    config.setup({ notify = false, register = '+' })
+    for _, r in ipairs({ '"', '*', '+', 'a', 'b' }) do
+      vim.fn.setreg(r, '')
+    end
+  end)
 
   it('copies to a single register string', function()
     config.setup({ notify = false, register = '"' })
@@ -12,10 +17,10 @@ describe('prompt-yank.yank copy register', function()
   end)
 
   it('copies to multiple registers when register is a list', function()
-    config.setup({ notify = false, register = { '*', '+' } })
+    config.setup({ notify = false, register = { 'a', 'b' } })
     yank.copy('multi')
-    assert.equals('multi', vim.fn.getreg('*'))
-    assert.equals('multi', vim.fn.getreg('+'))
+    assert.equals('multi', vim.fn.getreg('a'))
+    assert.equals('multi', vim.fn.getreg('b'))
   end)
 
   it('opts.register list overrides config', function()
