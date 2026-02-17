@@ -37,26 +37,41 @@ local function apply_keymaps()
 
   nmap('copy_file', M.yank_file, 'PromptYank: file')
   vmap('copy_selection', M.yank_selection, 'PromptYank: selection')
+  nmap('send_file', M.send_file, 'PromptYank: send file (tmux)')
+  vmap('send_selection', M.send_selection, 'PromptYank: send selection (tmux)')
 
   nmap('copy_function', M.yank_function, 'PromptYank: function')
   nmap('copy_multi', M.yank_multi, 'PromptYank: multi-file')
+  nmap('send_function', M.send_function, 'PromptYank: send function (tmux)')
+  nmap('send_multi', M.send_multi, 'PromptYank: send multi-file (tmux)')
 
   nmap('copy_diff', M.yank_diff, 'PromptYank: diff')
   vmap('copy_diff', M.yank_diff, 'PromptYank: selection + diff')
+  nmap('send_diff', M.send_diff, 'PromptYank: send diff (tmux)')
+  vmap('send_diff', M.send_diff, 'PromptYank: send selection + diff (tmux)')
 
   nmap('copy_blame', M.yank_blame, 'PromptYank: blame')
   vmap('copy_blame', M.yank_blame, 'PromptYank: selection blame')
+  nmap('send_blame', M.send_blame, 'PromptYank: send blame (tmux)')
+  vmap('send_blame', M.send_blame, 'PromptYank: send selection blame (tmux)')
 
   vmap('copy_diagnostics', M.yank_diagnostics, 'PromptYank: diagnostics')
+  vmap('send_diagnostics', M.send_diagnostics, 'PromptYank: send diagnostics (tmux)')
 
   nmap('copy_context', M.yank_context, 'PromptYank: context')
   vmap('copy_context', M.yank_context, 'PromptYank: selection + context')
+  nmap('send_context', M.send_context, 'PromptYank: send context (tmux)')
+  vmap('send_context', M.send_context, 'PromptYank: send selection + context (tmux)')
 
   nmap('copy_tree', M.yank_tree, 'PromptYank: project tree')
   vmap('copy_tree', M.yank_tree, 'PromptYank: tree path + selection')
+  nmap('send_tree', M.send_tree, 'PromptYank: send project tree (tmux)')
+  vmap('send_tree', M.send_tree, 'PromptYank: send tree path + selection (tmux)')
 
   nmap('copy_remote', M.yank_remote, 'PromptYank: remote URL')
   vmap('copy_remote', M.yank_remote, 'PromptYank: remote URL + selection')
+  nmap('send_remote', M.send_remote, 'PromptYank: send remote URL (tmux)')
+  vmap('send_remote', M.send_remote, 'PromptYank: send remote URL + selection (tmux)')
 
   vmap('copy_with_definitions', M.yank_with_definitions, 'PromptYank: selection + definitions')
   vmap(
@@ -64,8 +79,19 @@ local function apply_keymaps()
     M.yank_with_definitions_deep,
     'PromptYank: selection + deep definitions'
   )
+  vmap(
+    'send_with_definitions',
+    M.send_with_definitions,
+    'PromptYank: send selection + definitions (tmux)'
+  )
+  vmap(
+    'send_with_definitions_deep',
+    M.send_with_definitions_deep,
+    'PromptYank: send selection + deep definitions (tmux)'
+  )
 
   nmap('copy_related', M.yank_related, 'PromptYank: related files')
+  nmap('send_related', M.send_related, 'PromptYank: send related files (tmux)')
 end
 
 function M.setup(opts)
@@ -87,6 +113,45 @@ local function get_fullpath(bufnr)
   return name
 end
 
+local function no_copy_opts(opts)
+  opts = opts or {}
+  if opts.register == nil then opts.register = '_' end
+  if opts.notify == nil then opts.notify = false end
+  return opts
+end
+
+local function tmux_notify_enabled(opts)
+  local conf = config.get()
+  local enabled = conf.tmux and conf.tmux.notify
+  if opts and opts.tmux and opts.tmux.notify ~= nil then enabled = opts.tmux.notify end
+  return enabled
+end
+
+local function send_text(text, opts)
+  local yank = require('prompt-yank.yank')
+  if not text or text == '' then
+    if tmux_notify_enabled(opts) then
+      yank.notify('Nothing to send', vim.log.levels.WARN, opts)
+    end
+    return nil
+  end
+
+  local tmux = require('prompt-yank.tmux')
+  local ok, err = tmux.send(text, opts)
+  if not ok then
+    yank.notify(('Tmux send failed: %s'):format(err), vim.log.levels.ERROR, opts)
+    return nil
+  end
+
+  if tmux_notify_enabled(opts) then
+    local conf = config.get()
+    local target = (opts and opts.tmux and opts.tmux.target) or (conf.tmux and conf.tmux.target) or 'tmux'
+    yank.notify(('Sent to tmux (%s)%s'):format(target, yank.token_suffix(text)), nil, opts)
+  end
+
+  return text
+end
+
 function M.format_selection(opts)
   local yank = require('prompt-yank.yank')
   local code, line_start, line_end = yank.get_visual_selection(current_bufnr(), opts)
@@ -103,6 +168,16 @@ function M.format_file(opts)
   local code = yank.get_buffer_text(current_bufnr())
   local ctx = yank.build_ctx_for_buffer(current_bufnr(), code, nil, nil)
   return yank.format_code_block(ctx, opts)
+end
+
+function M.send_selection(opts)
+  local text = M.format_selection(opts)
+  return send_text(text, opts)
+end
+
+function M.send_file(opts)
+  local text = M.format_file(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_selection(opts)
@@ -126,6 +201,12 @@ function M.yank_selection(opts)
     opts
   )
   return text
+end
+
+function M.send_range(line_start, line_end, opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_range(line_start, line_end, opts)
+  return send_text(text, opts)
 end
 
 function M.yank_file(opts)
@@ -204,6 +285,12 @@ function M.yank_diagnostics(opts)
     opts
   )
   return text
+end
+
+function M.send_diagnostics(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_diagnostics(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_diff(opts)
@@ -288,6 +375,12 @@ function M.yank_diff(opts)
   return text
 end
 
+function M.send_diff(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_diff(opts)
+  return send_text(text, opts)
+end
+
 function M.yank_blame(opts)
   opts = opts or {}
   local yank = require('prompt-yank.yank')
@@ -329,6 +422,12 @@ function M.yank_blame(opts)
   yank.copy(text, opts)
   yank.notify(('Copied blame for %s%s'):format(ctx.filepath, yank.token_suffix(text)), nil, opts)
   return text
+end
+
+function M.send_blame(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_blame(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_tree(opts)
@@ -386,7 +485,7 @@ function M.yank_tree(opts)
 
   local depth = opts.depth or conf.tree.max_depth
   local project_tree, item_count =
-    tree.build_tree(root, depth, conf.tree.ignore, conf.tree.max_files_fallback)
+      tree.build_tree(root, depth, conf.tree.ignore, conf.tree.max_files_fallback)
   local ctx = yank.build_ctx_for_buffer(bufnr, '', nil, nil, {
     project_name = project_name,
     project_tree = project_tree,
@@ -400,6 +499,12 @@ function M.yank_tree(opts)
     opts
   )
   return text
+end
+
+function M.send_tree(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_tree(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_context(opts)
@@ -425,7 +530,7 @@ function M.yank_context(opts)
 
   local code = yank.get_range_text(bufnr, start_ctx, end_ctx)
   local ctx =
-    yank.build_ctx_for_buffer(bufnr, code, start_ctx, end_ctx, { context_lines = context_lines })
+      yank.build_ctx_for_buffer(bufnr, code, start_ctx, end_ctx, { context_lines = context_lines })
 
   local text = yank.format_named_template('context', ctx, opts)
   yank.copy(text, opts)
@@ -440,6 +545,12 @@ function M.yank_context(opts)
     opts
   )
   return text
+end
+
+function M.send_context(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_context(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_remote(opts)
@@ -493,8 +604,8 @@ function M.yank_remote(opts)
   end
 
   local remote_url = base
-    and commit
-    and git.build_remote_url(base, provider, commit, rel, line_start, line_end)
+      and commit
+      and git.build_remote_url(base, provider, commit, rel, line_start, line_end)
   if not remote_url then
     local ctx = yank.build_ctx_for_buffer(bufnr, code, line_start, line_end)
     local text = yank.format_code_block(ctx, opts)
@@ -523,6 +634,12 @@ function M.yank_remote(opts)
     opts
   )
   return text
+end
+
+function M.send_remote(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_remote(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_function(opts)
@@ -563,6 +680,12 @@ function M.yank_function(opts)
   return text
 end
 
+function M.send_function(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_function(opts)
+  return send_text(text, opts)
+end
+
 function M.yank_files(paths, opts)
   opts = opts or {}
   local yank = require('prompt-yank.yank')
@@ -587,7 +710,7 @@ function M.yank_files(paths, opts)
           fullpath = path
         else
           fullpath = (vim.fs and vim.fs.joinpath) and vim.fs.joinpath(root, path)
-            or (root .. '/' .. path)
+              or (root .. '/' .. path)
         end
         fullpath = util.normalize_path(fullpath)
 
@@ -647,6 +770,12 @@ function M.yank_files(paths, opts)
   return text
 end
 
+function M.send_files(paths, opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_files(paths, opts)
+  return send_text(text, opts)
+end
+
 function M.yank_multi(opts)
   opts = opts or {}
   local picker = require('prompt-yank.picker')
@@ -659,6 +788,21 @@ function M.yank_multi(opts)
       return
     end
     M.yank_files(paths, opts)
+  end)
+end
+
+function M.send_multi(opts)
+  opts = no_copy_opts(opts)
+  local picker = require('prompt-yank.picker')
+  local yank = require('prompt-yank.yank')
+
+  local root = get_root(current_bufnr())
+  picker.pick_files({ root = root }, function(paths)
+    if not paths or #paths == 0 then
+      yank.notify('No files selected', vim.log.levels.INFO, opts)
+      return
+    end
+    M.send_files(paths, opts)
   end)
 end
 
@@ -697,7 +841,7 @@ function M.yank_with_definitions(opts)
 
   local defs_block = lsp.format_definitions(definitions, root)
   local header = config.resolve_template('definitions_header')
-    or '\n\n---\n\n**Referenced Definitions:**\n\n'
+      or '\n\n---\n\n**Referenced Definitions:**\n\n'
   local footer = config.resolve_template('definitions_footer') or ''
   local text = selection_block .. header .. defs_block .. footer
 
@@ -713,6 +857,12 @@ function M.yank_with_definitions(opts)
     opts
   )
   return text
+end
+
+function M.send_with_definitions(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_with_definitions(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_with_definitions_deep(opts)
@@ -752,7 +902,7 @@ function M.yank_with_definitions_deep(opts)
 
   local defs_block = lsp.format_definitions(definitions, root)
   local header = config.resolve_template('definitions_deep_header')
-    or '\n\n---\n\n**Referenced Definitions (deep):**\n\n'
+      or '\n\n---\n\n**Referenced Definitions (deep):**\n\n'
   local footer = config.resolve_template('definitions_footer') or ''
   local text = selection_block .. header .. defs_block .. footer
 
@@ -768,6 +918,12 @@ function M.yank_with_definitions_deep(opts)
     opts
   )
   return text
+end
+
+function M.send_with_definitions_deep(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_with_definitions_deep(opts)
+  return send_text(text, opts)
 end
 
 function M.yank_related(opts)
@@ -858,6 +1014,12 @@ function M.yank_related(opts)
     opts
   )
   return text
+end
+
+function M.send_related(opts)
+  opts = no_copy_opts(opts)
+  local text = M.yank_related(opts)
+  return send_text(text, opts)
 end
 
 return M

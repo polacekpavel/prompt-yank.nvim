@@ -294,6 +294,53 @@ require("prompt-yank").setup({
 })
 ```
 
+### Tmux
+
+Send output to a tmux pane without touching the clipboard.
+
+```lua
+require("prompt-yank").setup({
+  tmux = {
+    target = "prompt-yank-target", -- tmux target pane name or id
+    notify = true,                 -- show notifications for send results
+  },
+  keymaps = {
+    send_selection = "<Leader>ys",
+    send_file = "<Leader>yS",
+  },
+})
+```
+
+Helpful: find a pane id with:
+
+```sh
+tmux list-panes -F '#{pane_index} #{pane_id} #{pane_current_command}'
+```
+
+Per-call override example:
+
+```lua
+require("prompt-yank").send_selection({
+  tmux = { target = "%3", notify = false },
+})
+```
+
+Available `send_*` functions mirror all yank modes:
+
+- `send_selection`
+- `send_file`
+- `send_function`
+- `send_multi`
+- `send_diff`
+- `send_blame`
+- `send_diagnostics`
+- `send_context`
+- `send_tree`
+- `send_remote`
+- `send_with_definitions`
+- `send_with_definitions_deep`
+- `send_related`
+
 ### Notes
 
 - No required dependencies (pure Lua).
