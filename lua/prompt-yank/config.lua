@@ -48,6 +48,10 @@ M.defaults = {
   root = { strategy = 'git_or_cwd' },
   register = '+',
   notify = true,
+  tmux = {
+    target = 'prompt-yank-target',
+    notify = true,
+  },
   context_lines = 5,
   tree = {
     max_depth = 3,
